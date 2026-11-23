@@ -7,6 +7,7 @@
   <meta name="description" content="하우웰 HOWELL | 건강식품, 화장품, 의약외품과 의약품 정보. 건강한 하루를 위한 드럭스토어 체험몰.">
   <title>HOWELL 하우웰 | Better days, better you.</title>
   <link rel="stylesheet" href="./style.css">
+  <style>.header-actions > [hidden] { display: none !important; }</style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
   <script src="./db.js" defer></script>
   <script src="./script.js" defer></script>
@@ -24,7 +25,9 @@
         <button type="submit" aria-label="검색">⌕ <span class="search-label">검색</span></button>
       </form>
       <div class="header-actions">
-        <button class="head-action" type="button" data-open="auth"><span class="action-icon" aria-hidden="true">♙</span><span id="authLabel">로그인</span></button>
+        <button id="authMenuButton" class="head-action" type="button" data-open="auth"><span class="action-icon" aria-hidden="true">♙</span><span id="authLabel">로그인 · 회원가입</span></button>
+        <button id="profileMenuButton" class="head-action" type="button" data-open="mypage" hidden><span class="action-icon" aria-hidden="true">♙</span><span id="profileName">회원 님</span></button>
+        <button id="logoutMenuButton" class="head-action" type="button" data-action="logout" hidden><span class="action-icon" aria-hidden="true">↪</span><span>로그아웃</span></button>
         <button class="head-action" type="button" data-open="mypage"><span class="action-icon" aria-hidden="true">♡</span><span>마이페이지</span></button>
         <button class="head-action cart-head" type="button" data-open="cart"><span class="action-icon" aria-hidden="true">▤</span><span>장바구니</span><span class="cart-counter" id="cartCount">0</span></button>
       </div>
@@ -81,20 +84,20 @@
     <section class="notice-section container"><div class="notice-card"><div><span class="section-kicker">PLEASE NOTE</span><h2>건강한 선택을 위한 안내</h2><p>의약품 카테고리는 정보 확인용입니다. 의약품은 온라인 장바구니 및 주문이 제한되며, 실제 구매·복용 상담은 적법한 약국을 이용해 주세요. 모든 상품과 재고·가격은 시연을 위한 예시입니다.</p></div><span class="notice-decoration" aria-hidden="true">✚</span></div></section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-content"><div><a href="./index.html" class="footer-brand">HOWELL<span>.</span></a><p>Better days, better you.<br>당신의 건강한 일상을 생각합니다.</p></div><div class="footer-info"><strong>하우웰 온라인 체험몰</strong><p>회원·주문·포인트는 이 브라우저에서만 저장됩니다.<br>실제 결제, 배송, 의약품 판매, 고객센터는 운영하지 않습니다.<br>© 2026 HOWELL. Demo website.</p></div></div></footer>
+  <footer class="site-footer"><div class="container footer-content"><div><a href="./index.html" class="footer-brand">HOWELL<span>.</span></a><p>Better days, better you.<br>당신의 건강한 일상을 생각합니다.</p></div><div class="footer-info"><strong>하우웰 온라인 체험몰</strong><p>회원 인증·프로필은 Supabase에서 관리하고, 주문·재고는 체험용입니다.<br>실제 결제, 배송, 의약품 판매, 고객센터는 운영하지 않습니다.<br>© 2026 HOWELL. Demo website.</p></div></div></footer>
 
   <div id="modalBackdrop" class="overlay" hidden>
     <div id="authModal" class="dialog auth-dialog" role="dialog" aria-modal="true" aria-label="로그인 또는 회원가입" hidden>
       <button class="close-btn" type="button" data-close aria-label="닫기">×</button><span class="section-kicker">HELLO, HOWELL</span><h2 id="authHeading">하우웰 로그인</h2>
       <div class="tabs"><button type="button" id="loginTab" class="tab active" data-mode="login">로그인</button><button type="button" id="signupTab" class="tab" data-mode="signup">회원가입</button></div>
       <form id="loginForm" class="stack-form"><label>이메일<input name="email" type="email" autocomplete="username" placeholder="demo@example.com" required></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" minlength="6" required></label><button class="btn btn-primary full" type="submit">로그인</button></form>
-      <form id="signupForm" class="stack-form" hidden><label>이름<input name="name" type="text" maxlength="30" autocomplete="nickname" placeholder="사용할 이름" required></label><label>이메일<input name="email" type="email" autocomplete="off" placeholder="test@example.com" required></label><label>비밀번호<input name="password" type="password" autocomplete="new-password" minlength="6" placeholder="6자 이상 (가상 비밀번호만 사용)" required></label><label>비밀번호 확인<input name="confirm" type="password" autocomplete="new-password" minlength="6" required></label><button class="btn btn-primary full" type="submit">가입하고 3,000P 받기</button></form>
-      <p class="form-help">체험용 계정입니다. 실제 사용하는 이메일·비밀번호를 입력하지 마세요.</p>
+      <form id="signupForm" class="stack-form" hidden><label>이름<input name="name" type="text" maxlength="30" autocomplete="nickname" placeholder="사용할 이름" required></label><label>연락처<input name="phone" type="tel" autocomplete="tel" maxlength="20" placeholder="010-1234-5678" required></label><label>이메일<input name="email" type="email" autocomplete="email" placeholder="test@example.com" required></label><label>비밀번호<input name="password" type="password" autocomplete="new-password" minlength="6" placeholder="6자 이상" required></label><label>비밀번호 확인<input name="confirm" type="password" autocomplete="new-password" minlength="6" required></label><button class="btn btn-primary full" type="submit">가입하고 3,000P 받기</button></form>
+      <p class="form-help">Supabase 회원 계정을 생성합니다. 비밀번호는 6자 이상 입력해 주세요. 수업 실습에는 테스트용 연락처를 사용하세요.</p>
     </div>
     <div id="detailModal" class="dialog detail-dialog" role="dialog" aria-modal="true" aria-label="상품 상세" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><div id="detailContent"></div></div>
     <div id="mypageModal" class="dialog page-dialog" role="dialog" aria-modal="true" aria-label="마이페이지" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><div id="mypageContent"></div></div>
-    <div id="checkoutModal" class="dialog checkout-dialog" role="dialog" aria-modal="true" aria-label="체험 결제" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><span class="section-kicker">DEMO CHECKOUT</span><h2>체험 주문하기</h2><p class="form-help">실제 결제는 진행하지 않고 주문 내역만 저장합니다.</p>
-      <form id="checkoutForm" class="stack-form"><fieldset class="choice-group"><legend>수령 방법</legend><label><input type="radio" name="receiveMethod" value="delivery" checked> 배송</label><label><input type="radio" name="receiveMethod" value="pickup"> 매장 픽업</label></fieldset><div id="deliveryFields"><label>받는 사람<input name="receiver" type="text" maxlength="30" placeholder="받는 사람 이름"></label><label>배송 주소<input name="address" type="text" maxlength="100" placeholder="데모 주소 (실제 주소 입력 금지)"></label></div><div id="pickupFields" hidden><label>픽업 매장<select name="pickupStore" id="pickupStore"></select></label><p id="pickupInventory" class="form-help"></p></div><div class="price-box" id="checkoutSummary"></div><label>사용할 포인트<input type="number" name="points" id="usePoints" min="0" step="1" value="0"></label><div class="price-box strong" id="checkoutTotal"></div><button type="submit" class="btn btn-primary full">주문 내역 저장하기 (결제 없음)</button></form>
+    <div id="checkoutModal" class="dialog checkout-dialog" role="dialog" aria-modal="true" aria-label="체험 결제" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><span class="section-kicker">DEMO CHECKOUT</span><h2>체험 주문하기</h2><p class="form-help">실제 결제는 진행하지 않습니다. 주문 내역은 이 화면에서만 임시로 보이며 DB에 저장되지 않습니다.</p>
+      <form id="checkoutForm" class="stack-form"><fieldset class="choice-group"><legend>수령 방법</legend><label><input type="radio" name="receiveMethod" value="delivery" checked> 배송</label><label><input type="radio" name="receiveMethod" value="pickup"> 매장 픽업</label></fieldset><div id="deliveryFields"><label>받는 사람<input name="receiver" type="text" maxlength="30" placeholder="받는 사람 이름"></label><label>배송 주소<input name="address" type="text" maxlength="100" placeholder="데모 주소 (실제 주소 입력 금지)"></label></div><div id="pickupFields" hidden><label>픽업 매장<select name="pickupStore" id="pickupStore"></select></label><p id="pickupInventory" class="form-help"></p></div><div class="price-box" id="checkoutSummary"></div><label>사용할 포인트 (다음 과제에서 연결)<input type="number" name="points" id="usePoints" min="0" step="1" value="0" disabled></label><div class="price-box strong" id="checkoutTotal"></div><button type="submit" class="btn btn-primary full">체험 주문하기 (결제 없음)</button></form>
     </div>
   </div>
 

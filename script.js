@@ -1,11 +1,11 @@
-/* HOWELL — 정적 사이트용 체험 데이터. 실제 고객정보·실제 결제를 저장하지 마세요. */
-/* 나중에 DB로 옮기기 쉽도록 상품·회원등급 배열을 파일 맨 위에 둡니다. */
+/* HOWELL · 과제 3: 상품/주문은 데모, 회원 인증/프로필만 Supabase 연동. */
+/* 상품 배열은 이번 과제에서 변경하지 않습니다. */
 const CATEGORIES = ["전체", "건강식품", "화장품", "의약외품", "의약품"];
 const MEMBERSHIP_TIERS = [
-  { name: "GREEN", minSpend: 0, rate: 0.01, label: "기본 회원", icon: "☘" },
-  { name: "SILVER", minSpend: 100000, rate: 0.03, label: "누적 10만원", icon: "✧" },
-  { name: "GOLD", minSpend: 300000, rate: 0.05, label: "누적 30만원", icon: "✦" },
-  { name: "PLATINUM", minSpend: 600000, rate: 0.07, label: "누적 60만원", icon: "◆" }
+  { grade: "WELCOME", name: "GREEN", rate: 0.01, label: "기본 회원", icon: "☘" },
+  { grade: "SILVER", name: "SILVER", rate: 0.03, label: "누적 10만원", icon: "✧" },
+  { grade: "GOLD", name: "GOLD", rate: 0.05, label: "누적 30만원", icon: "✦" },
+  { grade: "VIP", name: "PLATINUM", rate: 0.07, label: "누적 60만원", icon: "◆" }
 ];
 const PRODUCTS = 
 [
@@ -567,29 +567,54 @@ const STORES = [
   { id: "seoul", name: "하우웰 서울점 (체험)", pickup: true },
   { id: "cheonan", name: "하우웰 천안점 (체험)", pickup: true }
 ];
-const KEYS = { members:"howell_members_v1", current:"howell_current_v1", cart:"howell_cart_v1", orders:"howell_orders_v1", items:"howell_order_items_v1", inventory:"howell_inventory_v1" };
+// 회원/인증 정보는 앱 코드에서 localStorage로 저장하지 않습니다.
+// Supabase Auth SDK가 자체적으로 세션 토큰을 관리합니다(원본 비밀번호 저장 안 함).
+// 주문은 아직 다음 과제 대상이므로 새로고침 전까지만 메모리에 보관합니다.
+const KEYS = { cart: "howell_cart_v1", inventory: "howell_inventory_v1" };
 const getStored = (key, fallback) => { try { const raw=localStorage.getItem(key); return raw===null?fallback:JSON.parse(raw); } catch { return fallback; } };
 const save = (key,data) => localStorage.setItem(key,JSON.stringify(data));
+// 구버전 체험 회원(ID, salt, password hash 등)과 연결된 주문 기록을 제거합니다.
+// 기존 체험 회원은 Supabase Auth 계정으로 자동 이전되지 않습니다.
+try {
+  for (const legacyKey of ["howell_members_v1", "howell_current_v1", "howell_orders_v1", "howell_order_items_v1"]) {
+    localStorage.removeItem(legacyKey);
+  }
+} catch(error) {
+  console.warn("구버전 로컬 회원정보 정리 실패:", error);
+}
 const money = n => Number(n).toLocaleString("ko-KR")+"원";
 const safe = text => String(text).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
 const $ = selector => document.querySelector(selector);
 const initialInventory = () => Object.fromEntries(PRODUCTS.filter(p=>p.purchasable).flatMap(p=>STORES.map(s=>[
   `${s.id}:${p.id}`, s.id==="wh"?p.stock:Math.max(0,Math.floor(p.stock/(s.id==="seoul"?4:3))-(p.id%7===0?9:0))
 ])));
-let members=getStored(KEYS.members,[]),currentId=getStored(KEYS.current,null);
-let orders=getStored(KEYS.orders,[]),orderItems=getStored(KEYS.items,[]);
+let currentUser = null; // Supabase Auth의 현재 사용자(메모리에만 참조)
+let profile = null;     // public.shop_profiles에서 읽은 내 회원정보(메모리에만 참조)
+let authRequestVersion = 0;
+let orders = [], orderItems = []; // 체험 주문은 현재 페이지의 메모리에만 유지
 let cart=getStored(KEYS.cart,[]),inventory=getStored(KEYS.inventory,initialInventory());
 let activeCategory="전체",searchTerm="",sortBy="id",detailId=null,detailQty=1;
 let slideIndex=0,slideTimer=null,toastTimer=null;
-const currentMember = () => members.find(m=>m.id===currentId)||null;
-const tierFor = spent => [...MEMBERSHIP_TIERS].reverse().find(t=>spent>=t.minSpend)||MEMBERSHIP_TIERS[0];
+const currentMember = () => currentUser ? profile : null;
+const tierFor = grade => MEMBERSHIP_TIERS.find(t=>t.grade===grade)||MEMBERSHIP_TIERS[0];
 const available = (storeId,id) => Math.max(0,Number(inventory[`${storeId}:${id}`]??0));
 const maxAvailable = id => Math.max(...STORES.map(s=>available(s.id,id)));
 const cartRows = () => cart.map(row=>({...row,product:PRODUCTS.find(p=>p.id===row.id)})).filter(row=>row.product&&row.product.purchasable);
 const subtotal = () => cartRows().reduce((sum,row)=>sum+row.product.price*row.qty,0);
 const shipping = (sum,method="delivery") => method==="pickup"||sum>=40000?0:3000;
 function toast(message){const el=$("#toast");el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3300);}
-function renderHeader(){const m=currentMember();$("#authLabel").textContent=m?`${m.name}님`:"로그인";const count=cart.reduce((n,x)=>n+x.qty,0);$("#cartCount").textContent=count;$("#cartTitleCount").textContent=count;}
+function renderHeader(){
+  const loggedIn=Boolean(currentUser);
+  const name=profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split("@")[0] || "회원";
+  $("#authMenuButton").hidden=loggedIn;
+  $("#profileMenuButton").hidden=!loggedIn;
+  $("#logoutMenuButton").hidden=!loggedIn;
+  $("#authLabel").textContent="로그인 · 회원가입";
+  $("#profileName").textContent=`${name} 님`;
+  const count=cart.reduce((n,x)=>n+x.qty,0);
+  $("#cartCount").textContent=count;
+  $("#cartTitleCount").textContent=count;
+}
 function renderTiers(){
   $("#tierCards").innerHTML=MEMBERSHIP_TIERS.map(t=>`<article class="tier-card"><span class="tier-icon" aria-hidden="true">${t.icon}</span><h3>${t.name}</h3><strong>${Math.round(t.rate*100)}%</strong><small>${t.label} · 구매금액 적립</small></article>`).join("");
 }
@@ -633,69 +658,239 @@ function renderDetail(){const p=PRODUCTS.find(x=>x.id===detailId);if(!p)return;
   $("#detailContent").innerHTML=`<div class="detail-layout"><img src="./${p.image}" alt="${safe(p.name)} 상품 일러스트"><div class="detail-info"><span class="product-cat">HOWELL · ${safe(p.category)}</span><h2>${safe(p.name)}</h2><p>${safe(p.description)}</p>${amount}</div></div>`;
 }
 function openDetail(id){detailId=Number(id);detailQty=1;renderDetail();showModal("detail");}
-async function hashSecret(password,salt){if(!globalThis.crypto?.subtle)throw new Error("이 브라우저에서는 체험용 로그인을 사용할 수 없습니다. HTTPS 또는 최신 브라우저를 이용하세요.");const data=new TextEncoder().encode(salt+":"+password);const hash=await crypto.subtle.digest("SHA-256",data);return Array.from(new Uint8Array(hash),b=>b.toString(16).padStart(2,"0")).join("");}
-function randomSalt(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");}
-function saveMembers(){save(KEYS.members,members);}
-async function handleSignup(ev){ev.preventDefault();const data=new FormData(ev.currentTarget);const name=String(data.get("name")||"").trim(),email=String(data.get("email")||"").trim().toLowerCase(),pw=String(data.get("password")||""),confirm=String(data.get("confirm")||"");
-  if(name.length<2){toast("이름을 2글자 이상 입력해 주세요.");return;}if(pw.length<6||pw!==confirm){toast("비밀번호가 일치하지 않거나 6자 미만입니다.");return;}if(members.some(m=>m.email===email)){toast("이미 가입된 체험 계정입니다.");return;}
-  try{const salt=randomSalt(),hash=await hashSecret(pw,salt);const m={id:`M-${Date.now()}-${Math.floor(Math.random()*100000)}`,name,email,salt,hash,points:3000,spent:0,joinedAt:new Date().toISOString()};members.push(m);currentId=m.id;saveMembers();save(KEYS.current,currentId);ev.currentTarget.reset();renderHeader();closeModal();toast("회원가입 완료! 3,000P가 적립되었습니다.");}catch(e){toast(e.message);}
+// 서버는 signup 메타데이터를 활용하여 shop_profiles를 자동 생성합니다.
+// 클라이언트에서는 points / grade / role을 읽기만 하며 수정 요청에 넣지 않습니다.
+function authErrorMessage(error, action="login") {
+  const code=String(error?.code||"").toLowerCase();
+  const message=String(error?.message||"").toLowerCase();
+  if(code.includes("user_already_exists") || message.includes("already registered") || message.includes("already exists"))
+    return "이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용해 주세요.";
+  if(code.includes("invalid_credentials") || message.includes("invalid login credentials"))
+    return "이메일 또는 비밀번호가 올바르지 않습니다.";
+  if(code.includes("email_not_confirmed") || message.includes("email not confirmed"))
+    return "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해 주세요.";
+  if(code.includes("weak_password") || message.includes("password should") || message.includes("password must"))
+    return "비밀번호는 6자 이상으로 설정하고, 안내된 보안 조건을 충족해 주세요.";
+  if(code.includes("email_address_invalid") || message.includes("invalid email"))
+    return "올바른 이메일 주소를 입력해 주세요.";
+  if(code.includes("over_email_send_rate_limit") || message.includes("rate limit") || message.includes("too many"))
+    return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+  if(message.includes("database error saving new user"))
+    return "회원 정보 생성에 실패했습니다. Supabase의 shop_profiles 생성 트리거를 확인해 주세요.";
+  if(code==="42501" || message.includes("permission denied"))
+    return "회원 정보에 접근할 권한이 없습니다. Supabase RLS 정책을 확인해 주세요.";
+  console.error(`Supabase ${action} 오류:`,error);
+  return action==="signup" ? "회원가입에 실패했습니다. 입력값과 Supabase 설정을 확인해 주세요." :
+    action==="profile" ? "회원정보 처리에 실패했습니다. 잠시 후 다시 시도해 주세요." :
+    "로그인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.";
 }
-async function handleLogin(ev){ev.preventDefault();const data=new FormData(ev.currentTarget),email=String(data.get("email")||"").trim().toLowerCase(),pw=String(data.get("password")||"");const m=members.find(x=>x.email===email);if(!m){toast("이메일 또는 비밀번호를 확인해 주세요.");return;}try{const h=await hashSecret(pw,m.salt);if(h!==m.hash){toast("이메일 또는 비밀번호를 확인해 주세요.");return;}currentId=m.id;save(KEYS.current,currentId);ev.currentTarget.reset();renderHeader();closeModal();toast(`${m.name}님, 환영합니다!`);}catch(e){toast(e.message);}}
-function openMyPage(){const m=currentMember();if(!m){toast("먼저 로그인해 주세요.");openAuth();return;}
- const tier=tierFor(m.spent),mine=orders.filter(o=>o.memberId===m.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
- $("#mypageContent").innerHTML=`<span class="section-kicker">MY HOWELL</span><h2>${safe(m.name)}님의 마이페이지</h2><div class="mypage-overview"><div><small>현재 등급</small><br><strong>${tier.name}</strong><p class="mypage-info">구매 적립률 ${Math.round(tier.rate*100)}%</p></div><div><small>보유 포인트</small><br><strong>${money(m.points).replace('원','P')}</strong><p class="mypage-info">누적 구매액 ${money(m.spent)}</p></div></div><div class="order-list"><h3>주문 내역 (${mine.length}건)</h3>${mine.length?mine.map(o=>{const items=orderItems.filter(it=>it.orderId===o.id);return `<article class="order-row"><h4>${safe(o.id)} <span class="product-cat">${o.receiveMethod==='pickup'?'매장 픽업':'배송'} · 체험 주문</span></h4><p>${safe(new Date(o.createdAt).toLocaleString('ko-KR'))} · ${items.map(it=>safe(it.name)+` ×${it.qty}`).join(', ')}</p><strong>${money(o.total)}</strong> <small> · ${o.pointsUsed}P 사용 · ${o.earned}P 적립</small></article>`;}).join(''):`<p class="form-help">아직 주문 내역이 없습니다.</p>`}</div><button class="btn btn-outline full" type="button" data-action="logout" style="margin-top:22px">로그아웃</button>`;
- showModal("mypage");
+
+async function loadMyProfile(userId) {
+  const {data,error}=await db.from("shop_profiles")
+    .select("id,email,name,phone,grade,points,role,created_at")
+    .eq("id",userId).single();
+  if(error) throw error;
+  return data;
 }
+
+// 모든 페이지 로드 시 반드시 getSession으로 로그인 상태를 검사합니다.
+async function syncAuthState() {
+  const version=++authRequestVersion;
+  try {
+    const {data,error}=await db.auth.getSession();
+    if(error) throw error;
+    if(version!==authRequestVersion) return;
+    const user=data?.session?.user || null;
+    currentUser=user;
+    profile=null;
+    renderHeader();
+    if(!user) return;
+    try {
+      const fetched=await loadMyProfile(user.id);
+      if(version!==authRequestVersion || currentUser?.id!==user.id) return;
+      profile=fetched;
+    } catch(error) {
+      console.error("shop_profiles 조회 실패:",error);
+      toast(authErrorMessage(error,"profile"));
+    }
+    renderHeader();
+  } catch(error) {
+    if(version!==authRequestVersion) return;
+    currentUser=null;
+    profile=null;
+    renderHeader();
+    console.error("Supabase 세션 확인 실패:",error);
+  }
+}
+
+async function handleSignup(ev) {
+  ev.preventDefault();
+  const form=ev.currentTarget;
+  const data=new FormData(form);
+  const name=String(data.get("name")||"").trim();
+  const phone=String(data.get("phone")||"").trim();
+  const email=String(data.get("email")||"").trim().toLowerCase();
+  const password=String(data.get("password")||"");
+  const confirm=String(data.get("confirm")||"");
+  if(name.length<2) {toast("이름을 2글자 이상 입력해 주세요.");return;}
+  if(!phone) {toast("연락처를 입력해 주세요.");return;}
+  if(password.length<6) {toast("비밀번호는 6자 이상 입력해 주세요.");return;}
+  if(password!==confirm) {toast("비밀번호 확인이 일치하지 않습니다.");return;}
+  const button=form.querySelector('button[type="submit"]');
+  button.disabled=true;
+  try {
+    const {data:result,error}=await db.auth.signUp({
+      email,password,options:{data:{name,phone}}
+    });
+    if(error) {toast(authErrorMessage(error,"signup"));return;}
+    form.reset();
+    closeModal();
+    if(result?.session) {
+      await syncAuthState();
+      toast("회원가입이 완료되었습니다. 회원 등급과 3,000P는 DB에서 확인할 수 있습니다.");
+    } else {
+      // 이메일 중복 방지 정책에 따라 기존 계정인지 여부를 숨기는 경우도 있습니다.
+      toast("가입 요청이 접수되었습니다. 이메일 인증이 필요하면 메일함을 확인해 주세요.");
+    }
+  } catch(error) {
+    console.error("회원가입 실패:",error);
+    toast("회원가입 요청에 실패했습니다. 네트워크 연결을 확인해 주세요.");
+  } finally {button.disabled=false;}
+}
+
+async function handleLogin(ev) {
+  ev.preventDefault();
+  const form=ev.currentTarget;
+  const data=new FormData(form);
+  const email=String(data.get("email")||"").trim().toLowerCase();
+  const password=String(data.get("password")||"");
+  const button=form.querySelector('button[type="submit"]');
+  button.disabled=true;
+  try {
+    const {error}=await db.auth.signInWithPassword({email,password});
+    if(error) {toast(authErrorMessage(error,"login"));return;}
+    form.reset();
+    closeModal();
+    await syncAuthState();
+    toast(`${profile?.name || currentUser?.email?.split("@")[0] || "회원"} 님, 환영합니다!`);
+  } catch(error) {
+    console.error("로그인 실패:",error);
+    toast("로그인 요청에 실패했습니다. 네트워크 연결을 확인해 주세요.");
+  } finally {button.disabled=false;}
+}
+
+async function handleLogout() {
+  try {
+    const {error}=await db.auth.signOut();
+    if(error) {toast(authErrorMessage(error,"logout"));return;}
+    ++authRequestVersion; // 이전 요청의 응답이 로그아웃 후 다시 적용되지 않도록 함
+    currentUser=null;
+    profile=null;
+    orders=[];
+    orderItems=[];
+    closeModal();
+    renderHeader();
+    toast("로그아웃했습니다.");
+  } catch(error) {
+    console.error("로그아웃 실패:",error);
+    toast("로그아웃에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+}
+
+function renderMyPage() {
+  const m=currentMember();
+  if(!m) return;
+  const tier=tierFor(m.grade);
+  const mine=orders.filter(o=>o.memberId===m.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  $("#mypageContent").innerHTML=`
+    <span class="section-kicker">MY HOWELL</span>
+    <h2>${safe(m.name||"회원")}님의 마이페이지</h2>
+    <div class="mypage-overview">
+      <div><small>현재 등급</small><br><strong>${safe(tier.name)}</strong><p class="mypage-info">DB 등급 ${safe(m.grade)} · 적립률 안내 ${Math.round(tier.rate*100)}%</p></div>
+      <div><small>보유 포인트</small><br><strong>${Number(m.points||0).toLocaleString("ko-KR")}P</strong><p class="mypage-info">포인트는 DB에서 관리됩니다.</p></div>
+    </div>
+    <form id="profileEditForm" class="stack-form">
+      <label>이메일<input type="email" value="${safe(m.email||currentUser?.email||"")}" readonly></label>
+      <label>이름<input name="name" type="text" maxlength="30" minlength="2" value="${safe(m.name||"")}" autocomplete="name" required></label>
+      <label>연락처<input name="phone" type="tel" maxlength="20" value="${safe(m.phone||"")}" autocomplete="tel" required></label>
+      <p class="form-help">등급 · 포인트 · 관리자 권한은 조회만 가능하며 여기에서 수정할 수 없습니다.</p>
+      <button class="btn btn-primary full" type="submit">이름 · 연락처 저장하기</button>
+    </form>
+    <div class="order-list"><h3>체험 주문 내역 (${mine.length}건)</h3>
+      ${mine.length?mine.map(o=>{const items=orderItems.filter(it=>it.orderId===o.id);return `<article class="order-row"><h4>${safe(o.id)} <span class="product-cat">${o.receiveMethod==='pickup'?'매장 픽업':'배송'} · 체험 주문</span></h4><p>${safe(new Date(o.createdAt).toLocaleString('ko-KR'))} · ${items.map(it=>safe(it.name)+` ×${it.qty}`).join(', ')}</p><strong>${money(o.total)}</strong> <small> · 결제 없음</small></article>`;}).join(''):`<p class="form-help">아직 체험 주문 내역이 없습니다. 현재 단계에서는 주문이 DB에 저장되지 않습니다.</p>`}
+    </div>
+    <button class="btn btn-outline full" type="button" data-action="logout" style="margin-top:22px">로그아웃</button>`;
+}
+
+async function openMyPage() {
+  if(!currentUser) {toast("마이페이지 이용을 위해 먼저 로그인해 주세요.");openAuth("login");return;}
+  try {
+    // 열 때마다 DB에서 내 회원정보를 다시 읽습니다.
+    profile=await loadMyProfile(currentUser.id);
+    renderHeader();
+    renderMyPage();
+    showModal("mypage");
+  } catch(error) {
+    console.error("마이페이지 조회 실패:",error);
+    toast(authErrorMessage(error,"profile"));
+  }
+}
+
+async function handleProfileUpdate(ev) {
+  ev.preventDefault();
+  if(!currentUser) {openAuth("login");return;}
+  const form=ev.target;
+  const data=new FormData(form);
+  const name=String(data.get("name")||"").trim();
+  const phone=String(data.get("phone")||"").trim();
+  if(name.length<2) {toast("이름을 2글자 이상 입력해 주세요.");return;}
+  if(!phone) {toast("연락처를 입력해 주세요.");return;}
+  const button=form.querySelector('button[type="submit"]');
+  button.disabled=true;
+  try {
+    const userId=currentUser.id;
+    const {data:updated,error}=await db.from("shop_profiles")
+      .update({name,phone}) // 절대로 grade / points / role을 UPDATE하지 않음
+      .eq("id",userId)
+      .select("id,email,name,phone,grade,points,role,created_at")
+      .single();
+    if(error) {toast(authErrorMessage(error,"profile"));return;}
+    if(currentUser?.id!==userId) return;
+    profile=updated;
+    renderHeader();
+    renderMyPage();
+    toast("회원정보가 저장되었습니다.");
+  } catch(error) {
+    console.error("프로필 수정 실패:",error);
+    toast("회원정보 저장에 실패했습니다. 네트워크 연결을 확인해 주세요.");
+  } finally {button.disabled=false;}
+}
+
 function renderCheckout(){const m=currentMember();if(!m)return;const form=$("#checkoutForm");form.reset();form.elements.receiver.value=m.name;$("#pickupStore").innerHTML=STORES.filter(s=>s.pickup).map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join('');updateCheckout();}
 function updateCheckout(){const form=$("#checkoutForm"),m=currentMember();if(!m)return;const method=form.elements.receiveMethod.value,sub=subtotal(),fee=shipping(sub,method),storeId=method==='pickup'?form.elements.pickupStore.value:'wh';
  $("#deliveryFields").hidden=method!=="delivery";$("#pickupFields").hidden=method!=="pickup";const bad=cartRows().filter(r=>available(storeId,r.id)<r.qty);
  $("#pickupInventory").textContent=method==='pickup'?(bad.length?`재고 부족: ${bad.map(x=>x.product.name).join(', ')}. 다른 매장을 선택해 주세요.`:`선택 매장의 모든 상품이 준비 가능합니다. (체험용 재고)`):'';
- const pInput=$("#usePoints"),limit=Math.min(m.points,sub);pInput.max=String(limit);const used=Math.max(0,Math.min(limit,Math.floor(Number(pInput.value)||0)));if(String(used)!==pInput.value)pInput.value=String(used);
+ const pInput=$("#usePoints"),used=0; // 회원 포인트는 이번 단계에서 조회만 함
+ pInput.value="0";
  $("#checkoutSummary").innerHTML=`<div class="price-row"><span>상품금액</span><strong>${money(sub)}</strong></div><div class="price-row"><span>${method==='pickup'?'매장 픽업':'배송비'}</span><strong>${money(fee)}</strong></div><div class="price-row"><span>보유 포인트</span><strong>${m.points.toLocaleString()}P</strong></div>`;
- $("#checkoutTotal").innerHTML=`<div class="price-row"><span>포인트 사용</span><strong>−${used.toLocaleString()}P</strong></div><div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub+fee-used)}</strong></div><p class="form-help" style="margin:0">현재 ${tierFor(m.spent).name} 등급 · 예상 적립 ${Math.floor((sub-used)*tierFor(m.spent).rate).toLocaleString()}P</p>`;
+ $("#checkoutTotal").innerHTML=`<div class="price-row"><span>포인트 사용</span><strong>−${used.toLocaleString()}P</strong></div><div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub+fee-used)}</strong></div><p class="form-help" style="margin:0">현재 ${tierFor(m.grade).name} 등급 · 예상 적립 ${Math.floor((sub-used)*tierFor(m.grade).rate).toLocaleString()}P</p>`;
 }
 function openCheckout(){if(!cartRows().length){toast("장바구니가 비어 있습니다.");return;}if(!currentMember()){closeCart();toast("체험 주문을 위해 로그인해 주세요.");openAuth();return;}showModal("checkout");renderCheckout();}
 function handleCheckout(ev){ev.preventDefault();const m=currentMember();if(!m){openAuth();return;}const form=ev.currentTarget,method=form.elements.receiveMethod.value,storeId=method==='pickup'?form.elements.pickupStore.value:'wh',rows=cartRows();if(!rows.length){toast("장바구니가 비어 있습니다.");return;}
  if(method==='delivery'&&(!form.elements.receiver.value.trim()||!form.elements.address.value.trim())){toast("체험용 수령인과 주소를 입력해 주세요. 실제 주소는 입력하지 마세요.");return;}
  if(rows.some(r=>available(storeId,r.id)<r.qty)){toast("해당 처리 거점의 재고가 부족합니다. 상품 수량이나 매장을 변경해 주세요.");updateCheckout();return;}
- const sub=subtotal(),fee=shipping(sub,method),used=Math.max(0,Math.min(m.points,sub,Math.floor(Number(form.elements.points.value)||0))),tier=tierFor(m.spent),earned=Math.floor((sub-used)*tier.rate);
+ const sub=subtotal(),fee=shipping(sub,method),used=0,tier=tierFor(m.grade),earned=Math.floor(sub*tier.rate);
  const order={id:`HW-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*1000)}`,memberId:m.id,receiveMethod:method,storeId,status:'체험 주문 완료',subtotal:sub,shippingFee:fee,pointsUsed:used,total:sub+fee-used,earned,createdAt:new Date().toISOString()};
  orders.push(order);for(const r of rows){orderItems.push({orderId:order.id,productId:r.id,name:r.product.name,price:r.product.price,qty:r.qty});inventory[`${storeId}:${r.id}`]=available(storeId,r.id)-r.qty;}
- m.spent+=sub-used;m.points+=earned-used;saveMembers();save(KEYS.orders,orders);save(KEYS.items,orderItems);save(KEYS.inventory,inventory);cart=[];save(KEYS.cart,cart);renderHeader();renderCart();renderProducts();openMyPage();toast(`체험 주문 ${order.id} 저장 완료 · 실제 결제 없음`);
+ // 이번 단계의 주문은 서버 결제/DB 주문이 아닌 임시 메모리 기록입니다.
+ // DB 포인트/등급은 주문이벤트에서 임의로 변경하지 않습니다.
+ save(KEYS.inventory,inventory);cart=[];save(KEYS.cart,cart);
+ renderHeader();renderCart();renderProducts();openMyPage();
+ toast(`체험 주문 ${order.id} 작성 완료 · DB 주문/포인트 미반영`);
 }
-// HERO_SLIDE_INTERVAL_MS: GitHub Pages에서도 동일하게 6초마다 다음 이미지로 전환됩니다.
-const HERO_SLIDE_INTERVAL_MS = 6000;
-function setSlide(index){
- const slides=[...document.querySelectorAll('.hero-slide')];
- if(!slides.length)return;
- slideIndex=(index+slides.length)%slides.length;
- slides.forEach((slide,i)=>{
-   const selected=i===slideIndex;
-   slide.classList.toggle('active',selected);
-   slide.setAttribute('aria-hidden',String(!selected));
-   slide.querySelectorAll('button').forEach(button=>button.tabIndex=selected?0:-1);
- });
- document.querySelectorAll('#heroDots button').forEach((button,i)=>{
-   button.classList.toggle('active',i===slideIndex);
-   button.setAttribute('aria-pressed',String(i===slideIndex));
- });
- const counter=$('#heroCounter');
- if(counter)counter.textContent=`${String(slideIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;
- // Reset the 6-second visible progress indicator on every slide transition.
- const progress=$('#heroProgressFill');
- if(progress){progress.style.animation='none';void progress.offsetWidth;progress.style.animation=`howell-progress ${HERO_SLIDE_INTERVAL_MS}ms linear forwards`;}
-}
-function restartSlides(){
- clearInterval(slideTimer);
- slideTimer=setInterval(()=>setSlide(slideIndex+1),HERO_SLIDE_INTERVAL_MS);
-}
-function initSlides(){
- const slides=document.querySelectorAll('.hero-slide');
- const dots=$('#heroDots');
- dots.innerHTML=Array.from(slides,(_,i)=>`<button type="button" data-slide="${i}" aria-label="${i+1}번 배너" aria-pressed="false"></button>`).join('');
- setSlide(0);
- restartSlides();
-}
+function setSlide(index){const slides=[...document.querySelectorAll('.hero-slide')];slideIndex=(index+slides.length)%slides.length;slides.forEach((s,i)=>{s.classList.toggle('active',i===slideIndex);s.setAttribute('aria-hidden',String(i!==slideIndex));s.querySelectorAll('button').forEach(b=>b.tabIndex=i===slideIndex?0:-1);});document.querySelectorAll('#heroDots button').forEach((b,i)=>{b.classList.toggle('active',i===slideIndex);b.setAttribute('aria-pressed',String(i===slideIndex));});}
+function restartSlides(){clearInterval(slideTimer);slideTimer=setInterval(()=>setSlide(slideIndex+1),6000);}
+function initSlides(){const dots=$('#heroDots');dots.innerHTML=[0,1,2,3].map(i=>`<button type="button" data-slide="${i}" aria-label="${i+1}번 배너" aria-pressed="false"></button>`).join('');setSlide(0);restartSlides();}
 
 /* 이벤트 — 정적 페이지에서만 동작. 데이터는 추후 API 호출로 교체하세요. */
 document.addEventListener('click',event=>{
@@ -712,7 +907,7 @@ document.addEventListener('click',event=>{
  if(e.dataset.action==='detail-plus'){detailQty=Math.min(detailQty+1,99);$('#detailQty').textContent=detailQty;return;}
  if(e.dataset.action==='detail-minus'){detailQty=Math.max(1,detailQty-1);$('#detailQty').textContent=detailQty;return;}
  if(e.dataset.action==='detail-add'){addToCart(detailId,detailQty);closeModal();openCart();return;}
- if(e.dataset.action==='logout'){currentId=null;save(KEYS.current,null);renderHeader();closeModal();toast('로그아웃했습니다.');return;}
+ if(e.dataset.action==='logout'){void handleLogout();return;}
 });
 $('#searchForm').addEventListener('submit',e=>{e.preventDefault();searchTerm=$('#searchInput').value.trim();activeCategory='전체';renderProducts();$('#products').scrollIntoView({behavior:'smooth'});});
 $('#searchInput').addEventListener('input',e=>{searchTerm=e.target.value.trim();if(!searchTerm&&activeCategory==='전체')renderProducts();});
@@ -725,8 +920,14 @@ $('#cartShade').addEventListener('click',closeCart);
 $('#cartCheckout').addEventListener('click',openCheckout);
 $('#loginForm').addEventListener('submit',handleLogin);
 $('#signupForm').addEventListener('submit',handleSignup);
+document.addEventListener('submit',e=>{if(e.target.id==='profileEditForm')void handleProfileUpdate(e);});
 $('#checkoutForm').addEventListener('submit',handleCheckout);
 $('#checkoutForm').addEventListener('input',updateCheckout);
 $('#checkoutForm').addEventListener('change',updateCheckout);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCart();}});
 renderHeader();renderTiers();renderProducts();renderCart();initSlides();
+// 모든 페이지 방문/새로고침마다 인증 세션을 확인합니다.
+void syncAuthState();
+// 다른 탭에서의 로그인/로그아웃도 반영합니다.
+// 콜백 안에서 Supabase API를 직접 await하지 않아 인증 잠금을 피합니다.
+db.auth.onAuthStateChange(()=>{setTimeout(()=>{void syncAuthState();},0);});
