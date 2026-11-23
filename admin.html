@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#075843">
+  <meta name="description" content="HOWELL 관리자 전용 회원 · 주문 관리 페이지">
+  <title>HOWELL 하우웰 | 관리자</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* 기존 HOWELL 색상·글꼴을 재사용하는 관리자 화면 전용 스타일 */
+    body {background:#f8faf8;min-height:100vh}
+    .admin-header {background:white;border-bottom:1px solid var(--line);box-shadow:0 3px 14px #092b1d0a}
+    .admin-header-inner {display:flex;align-items:center;justify-content:space-between;gap:16px;padding:19px 0;flex-wrap:wrap}
+    .admin-header-actions {display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .admin-link {font-size:13px;font-weight:700;color:var(--green)}
+    .admin-title-band {padding:42px 0 22px}
+    .admin-title-band h1 {color:#123e32;font-size:clamp(26px,3vw,36px);letter-spacing:-1.1px;margin:8px 0}
+    .admin-title-band p {font-size:14px;color:var(--muted);margin:0}
+    .admin-user {color:#466258;font-size:13px}
+    .admin-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:18px 0 27px}
+    .admin-stat {background:white;border:1px solid var(--line);border-radius:var(--radius);padding:23px;box-shadow:0 8px 28px #063d3009}
+    .admin-stat small {display:block;color:var(--muted);font-size:13px;margin-bottom:10px}
+    .admin-stat strong {color:var(--green);font-size:clamp(22px,3vw,31px);font-weight:850;font-variant-numeric:tabular-nums}
+    .admin-card {background:white;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:25px;padding:23px;box-shadow:0 8px 28px #063d3008;min-width:0}
+    .admin-card-head {display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+    .admin-card-head h2 {font-size:21px;letter-spacing:-.6px;margin:0;color:#173f33}
+    .admin-card-head p {color:var(--muted);font-size:12px;margin:5px 0 0}
+    .admin-filter-bar {display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+    .admin-filter-bar input,.admin-filter-bar select,.admin-table select,.admin-table input {border:1px solid #d5e5db;border-radius:10px;padding:9px 10px;background:white;color:var(--ink);font-size:13px}
+    .admin-filter-bar input {flex:1;min-width:190px;max-width:360px}
+    .admin-filter-bar select {min-width:154px}
+    .admin-table-wrap {width:100%;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:13px}
+    .admin-table {border-collapse:collapse;width:100%;min-width:920px;text-align:left;font-size:13px}
+    .admin-table th {background:#edf7f0;font-size:12px;color:#355748;white-space:nowrap;padding:13px 12px;border-bottom:1px solid #dcebe1}
+    .admin-table td {padding:13px 12px;border-bottom:1px solid #edf1ee;vertical-align:middle}
+    .admin-table tr:last-child td {border-bottom:0}
+    .admin-table tbody tr:hover {background:#fbfdfb}
+    .admin-table td.email {max-width:230px;overflow-wrap:anywhere}
+    .admin-table .muted {color:var(--muted)}
+    .admin-table .num {font-variant-numeric:tabular-nums;white-space:nowrap}
+    .admin-table select {width:124px;min-width:110px}
+    .admin-table .points-input {width:110px;min-width:95px}
+    .admin-table .save-btn {background:var(--green);border:0;border-radius:9px;padding:9px 14px;color:white;font-size:12px;font-weight:800;white-space:nowrap}
+    .admin-table .save-btn:hover:not(:disabled) {background:var(--deep)}
+    .admin-table .save-btn:disabled {opacity:.55}
+    .admin-status {font-size:13px;color:#466258;min-height:22px;margin:10px 0}
+    .admin-status.error {color:#9c403a}
+    .admin-help {color:var(--muted);font-size:12px;line-height:1.7;margin:10px 0 0}
+    .admin-guard {padding:75px 18px;text-align:center;color:var(--green);font-size:16px;font-weight:700}
+    .admin-guard.error {color:#a24d41}
+    .admin-footer {padding:25px 0 38px;color:var(--muted);font-size:12px;text-align:center}
+    @media(max-width:760px){
+      .admin-stats {grid-template-columns:1fr;gap:10px}
+      .admin-stat {padding:15px 18px}
+      .admin-card {padding:15px}
+      .admin-title-band {padding:30px 0 14px}
+      .admin-filter-bar input {max-width:none;width:100%}
+      .admin-header-inner .brand strong {font-size:24px}
+      .admin-link {font-size:12px}
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="./db.js" defer></script>
+  <script src="./admin.js" defer></script>
+</head>
+<body>
+  <div class="topbar"><div class="container topbar-inner"><span>HOWELL 관리자 전용 페이지</span><span>실습용 회원 · 체험 주문 관리</span></div></div>
+  <header class="admin-header">
+    <div class="container admin-header-inner">
+      <a class="brand" href="./index.html" aria-label="하우웰 쇼핑몰 홈">
+        <span class="brand-mark" aria-hidden="true">✚</span>
+        <span><strong>HOWELL<span class="brand-dot">.</span></strong><small>하우웰 | Administration</small></span>
+      </a>
+      <nav class="admin-header-actions" aria-label="관리자 메뉴">
+        <span id="adminUser" class="admin-user"></span>
+        <a class="admin-link" href="./index.html">쇼핑몰로 돌아가기</a>
+        <button id="refreshBtn" type="button" class="btn btn-outline" disabled>새로고침</button>
+        <button id="adminLogout" type="button" class="btn btn-dark">로그아웃</button>
+      </nav>
+    </div>
+  </header>
+  <div id="guard" class="admin-guard" role="status">관리자 권한 확인 중…</div>
+  <main id="adminMain" class="container" hidden>
+    <section class="admin-title-band">
+      <span class="section-kicker">HOWELL ADMINISTRATION</span>
+      <h1>회원 · 주문 관리</h1>
+      <p>회원 정보와 체험 주문을 확인하고, 승인된 관리자 권한으로 변경할 수 있습니다.</p>
+    </section>
+    <div id="pageStatus" class="admin-status" role="status" aria-live="polite"></div>
+    <section class="admin-stats" aria-label="관리 요약">
+      <article class="admin-stat"><small>전체 회원 수</small><strong id="memberCount">—</strong></article>
+      <article class="admin-stat"><small>전체 주문 건수</small><strong id="orderCount">—</strong></article>
+      <article class="admin-stat"><small>전체 주문 합계</small><strong id="orderTotal">—</strong></article>
+    </section>
+    <section class="admin-card" aria-labelledby="membersTitle">
+      <div class="admin-card-head">
+        <div><h2 id="membersTitle">회원 관리</h2><p>회원 등급·포인트·역할은 관리자 전용 DB 함수로만 저장합니다.</p></div>
+        <small id="memberResultCount" class="admin-user"></small>
+      </div>
+      <div class="admin-filter-bar">
+        <label for="memberSearch" class="sr-only">회원 이름 검색</label>
+        <input id="memberSearch" type="search" placeholder="회원 이름 검색" autocomplete="off">
+        <label for="gradeFilter" class="sr-only">회원 등급 필터</label>
+        <select id="gradeFilter">
+          <option value="전체">모든 등급</option>
+          <option value="WELCOME">WELCOME</option>
+          <option value="SILVER">SILVER</option>
+          <option value="GOLD">GOLD</option>
+          <option value="VIP">VIP</option>
+        </select>
+      </div>
+      <div class="admin-table-wrap" role="region" tabindex="0" aria-label="회원 목록 (좌우 스크롤 가능)">
+        <table class="admin-table">
+          <thead><tr><th scope="col">이름</th><th scope="col">이메일</th><th scope="col">연락처</th><th scope="col">등급</th><th scope="col">포인트</th><th scope="col">역할</th><th scope="col">가입일</th><th scope="col">저장</th></tr></thead>
+          <tbody id="memberBody"><tr><td colspan="8">불러오는 중…</td></tr></tbody>
+        </table>
+      </div>
+      <p id="memberMessage" class="admin-status" role="status" aria-live="polite"></p>
+    </section>
+    <section class="admin-card" aria-labelledby="ordersTitle">
+      <div class="admin-card-head">
+        <div><h2 id="ordersTitle">주문 관리</h2><p>최근 주문부터 표시합니다. 주문 상태만 변경할 수 있습니다.</p></div>
+        <small id="orderResultCount" class="admin-user"></small>
+      </div>
+      <div class="admin-table-wrap" role="region" tabindex="0" aria-label="주문 목록 (좌우 스크롤 가능)">
+        <table class="admin-table">
+          <thead><tr><th scope="col">주문 번호</th><th scope="col">회원</th><th scope="col">주문일</th><th scope="col">합계</th><th scope="col">상태</th><th scope="col">저장</th></tr></thead>
+          <tbody id="orderBody"><tr><td colspan="6">불러오는 중…</td></tr></tbody>
+        </table>
+      </div>
+      <p id="orderMessage" class="admin-status" role="status" aria-live="polite"></p>
+      <p class="admin-help">주문 합계는 취소 상태를 포함해 저장된 모든 체험 주문의 total을 합산합니다. 실제 카드 결제나 재고 차감은 발생하지 않습니다.</p>
+    </section>
+  </main>
+  <footer class="container admin-footer">© 2026 HOWELL. Demo administration · 관리자 권한은 Supabase RLS와 DB 함수로 검사합니다.</footer>
+</body>
+</html>
