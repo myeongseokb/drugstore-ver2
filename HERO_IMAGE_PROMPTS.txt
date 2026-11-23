@@ -1,0 +1,27 @@
+HOWELL | 히어로 슬라이드 이미지 4장 제작 프롬프트
+========================================================
+
+이 파일은 이미지를 나중에 수정·재생성할 때 참고하기 위한 제작 프롬프트입니다.
+쇼핑몰은 이 파일을 읽지 않습니다. 업로드해도 화면이나 기능에는 영향이 없습니다.
+이미지 파일은 img/hero-1.webp ~ img/hero-4.webp를 사용합니다.
+이미지들은 AI 제작 이미지로 실제 브랜드·제품 사진이 아닙니다.
+권장 비율: 가로 16:7 ~ 2:1, 사진에는 텍스트·버튼·로고를 넣지 않는 것이 안전합니다.
+쇼핑몰의 제목·버튼은 index.html이 별도로 겹쳐 표시합니다.
+
+[1] hero-1.webp : 화장품 / 데일리 스킨케어
+A photorealistic luxury Korean skincare advertising banner, 16:7 wide landscape, ivory and soft blush pastel studio. On the right: a premium unbranded glass moisturizer jar with rose-gold lid and translucent serum dropper, plush white towels, jasmine flowers, dewy green leaves and soft curved stone pedestal. On the left: spacious quiet negative space for Korean headline added later in HTML. Warm diffused morning light, natural realistic reflections, flawless product studio photography, ultra high detail, absolutely no people, no labels, no text, no logos, no watermarks.
+
+[2] hero-2.webp : 건강식품 / 데일리 웰니스
+Photorealistic Korean wellness ecommerce banner, 16:7 wide landscape, refreshing pale-blue daylight and white marble. On the right half: amber vitamin supplement bottle with white cap, yellow translucent softgel capsules, elegant white nutrition package, sunscreen-like cream tube, pump bottle, green leaves. Left half is open for HTML copy. Clean natural reflections, believable retail pack photography, restrained premium healthcare aesthetic. No text, no logos, no identifiable existing medicine brand, no watermark.
+
+[3] hero-3.webp : 건강·뷰티 큐레이션
+Photorealistic Korean health and beauty premium product lineup on white stone tiers, wide 16:7 banner. Soft mint green botanical arch backdrop and fresh leaves with natural shadows. Carefully arranged unbranded amber supplement jars, translucent softgels, minimalist moisturizer pot and serum bottle, pale-green skincare tube, white neutral background. All products weighted toward the right leaving whitespace on the left. Studio lighting, sharp realistic materials. No people, no product text, no logos, no watermark.
+
+[4] hero-4.webp : 하우웰 신규 회원 이벤트
+Photorealistic premium Korean wellness gift and skincare banner, wide 16:7, warm cream and emerald color palette. On the right: elegant glass of water, amber vitamins, minimal green cream jar, serum dropper, green gift boxes, ginseng root and delicate leaves on cream stone platforms. Left half is soft open negative space reserved for HTML signup message. Daylight, authentic studio product photography, sophisticated and trustworthy health and beauty mood. No written text, no logo, no watermark.
+
+[슬라이드 전환 설정]
+- 4장
+- 6초 간격: script.js의 HERO_SLIDE_INTERVAL_MS = 6000
+- 부드러운 교차 전환: style.css의 .hero-slide transition (현재 .75s)
+- 수동 이전/다음, 위치 점 4개, 01 / 04 카운터, 6초 진행 바

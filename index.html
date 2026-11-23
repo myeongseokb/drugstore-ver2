@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#075843">
+  <meta name="description" content="하우웰 HOWELL | 건강식품, 화장품, 의약외품과 의약품 정보. 건강한 하루를 위한 드럭스토어 체험몰.">
+  <title>HOWELL 하우웰 | Better days, better you.</title>
+  <link rel="stylesheet" href="./style.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <div class="topbar"><div class="container topbar-inner"><span>당신의 하루에 더 좋은 건강, <strong>HOWELL</strong></span><span>신규 가입 시 3,000P · 4만원 이상 무료배송</span></div></div>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="./index.html" aria-label="하우웰 홈">
+        <span class="brand-mark" aria-hidden="true">✚</span><span><strong>HOWELL<span class="brand-dot">.</span></strong><small>하우웰 | Health & Beauty</small></span>
+      </a>
+      <form id="searchForm" class="search-form" role="search">
+        <label class="sr-only" for="searchInput">상품 검색</label>
+        <input id="searchInput" type="search" placeholder="필요한 건강·뷰티 상품을 검색하세요" autocomplete="off">
+        <button type="submit" aria-label="검색">⌕ <span class="search-label">검색</span></button>
+      </form>
+      <div class="header-actions">
+        <button class="head-action" type="button" data-open="auth"><span class="action-icon" aria-hidden="true">♙</span><span id="authLabel">로그인</span></button>
+        <button class="head-action" type="button" data-open="mypage"><span class="action-icon" aria-hidden="true">♡</span><span>마이페이지</span></button>
+        <button class="head-action cart-head" type="button" data-open="cart"><span class="action-icon" aria-hidden="true">▤</span><span>장바구니</span><span class="cart-counter" id="cartCount">0</span></button>
+      </div>
+    </div>
+    <nav class="nav-bar" aria-label="상품 분류"><div class="container nav-inner">
+      <button class="nav-link current" type="button" data-cat="전체">전체 상품</button>
+      <button class="nav-link" type="button" data-cat="건강식품">건강식품</button>
+      <button class="nav-link" type="button" data-cat="화장품">화장품</button>
+      <button class="nav-link" type="button" data-cat="의약외품">의약외품</button>
+      <button class="nav-link" type="button" data-cat="의약품">의약품 정보</button>
+      <a class="nav-membership" href="#membership">멤버십 혜택 <span aria-hidden="true">↗</span></a>
+    </div></nav>
+  </header>
+
+  <main>
+    <section class="hero" aria-label="하우웰 기획전">
+      <div class="hero-slider" id="heroSlider">
+        <article class="hero-slide active"><img src="./img/hero-1.webp" alt="자연광과 식물 사이의 크림과 세럼" fetchpriority="high"><div class="hero-tint"></div><div class="container hero-copy"><span class="eyebrow">HOWELL BEAUTY EDIT</span><h1>나를 돌보는 작은 습관,<br>더 건강해지는 매일</h1><p>피부를 위한 데일리 루틴을 하우웰에서 시작하세요.</p><button type="button" class="btn btn-white" data-cat="화장품">스킨케어 만나보기 <span>↗</span></button></div></article>
+        <article class="hero-slide" aria-hidden="true"><img src="./img/hero-2.webp" alt="건강 관련 제품과 스킨케어 제품의 청량한 진열"><div class="hero-tint"></div><div class="container hero-copy"><span class="eyebrow">HOWELL DAILY WELLNESS</span><h2>매일 쌓이는 건강,<br>좋은 선택에서 시작해요</h2><p>내 생활에 꼭 맞는 건강식품을 둘러보세요.</p><button type="button" class="btn btn-white" data-cat="건강식품">건강식품 보러가기 <span>↗</span></button></div></article>
+        <article class="hero-slide" aria-hidden="true"><img src="./img/hero-3.webp" alt="초록빛 배경의 건강식품과 화장품 라인업"><div class="hero-tint"></div><div class="container hero-copy"><span class="eyebrow">WELLNESS, MADE SIMPLE</span><h2>건강과 아름다움,<br>하우웰 하나로</h2><p>꼭 필요한 것을 선별한 웰니스 큐레이션.</p><button type="button" class="btn btn-white" data-cat="전체">전체 상품 보기 <span>↗</span></button></div></article>
+        <article class="hero-slide hero-slide-end" aria-hidden="true"><img src="./img/hero-4.webp" alt="하우웰 로고와 건강식품·화장품을 진열한 따뜻한 이미지"><div class="hero-tint"></div><div class="container hero-copy"><span class="eyebrow">WELCOME TO HOWELL</span><h2>새로운 시작에<br>3,000 포인트 선물</h2><p>가입하고 나만의 웰니스 쇼핑을 시작해 보세요.</p><button type="button" class="btn btn-white" data-open="auth" data-mode="signup">회원가입하기 <span>↗</span></button></div></article>
+      </div>
+      <div class="hero-controls" aria-label="프로모션 슬라이드 조작">
+        <button id="heroPrev" aria-label="이전 배너" type="button">‹</button>
+        <div id="heroDots" class="hero-dots" aria-label="배너 선택"></div>
+        <span class="hero-count" id="heroCounter" aria-label="현재 배너 순서">01 / 04</span>
+        <button id="heroNext" aria-label="다음 배너" type="button">›</button>
+      </div>
+      <div class="hero-progress" aria-hidden="true"><span id="heroProgressFill"></span></div>
+    </section>
+
+    <section class="intro-section container" aria-label="하우웰 카테고리">
+      <div class="section-heading"><div><span class="section-kicker">SHOP BY CATEGORY</span><h2>오늘, 어떤 케어가 필요하세요?</h2></div><p>건강부터 뷰티까지, 내 일상에 맞는 선택</p></div>
+      <div class="category-grid">
+        <button class="category-tile tile-health" type="button" data-cat="건강식품"><span class="category-symbol">✦</span><span><strong>건강식품</strong><small>하루하루 건강한 밸런스</small></span><span>↗</span></button>
+        <button class="category-tile tile-beauty" type="button" data-cat="화장품"><span class="category-symbol">❀</span><span><strong>화장품</strong><small>피부를 위한 부드러운 케어</small></span><span>↗</span></button>
+        <button class="category-tile tile-care" type="button" data-cat="의약외품"><span class="category-symbol">✚</span><span><strong>의약외품</strong><small>매일 필요한 위생·케어용품</small></span><span>↗</span></button>
+        <button class="category-tile tile-medicine" type="button" data-cat="의약품"><span class="category-symbol">◇</span><span><strong>의약품 정보</strong><small>판매 없이 정보만 안내</small></span><span>↗</span></button>
+      </div>
+    </section>
+
+    <section class="trust-band" aria-label="하우웰 서비스"><div class="container trust-grid"><div><span>✓</span><strong>큐레이션 제품</strong><small>일상에 필요한 상품만</small></div><div><span>♧</span><strong>회원 포인트</strong><small>등급별 최대 7% 적립</small></div><div><span>⬡</span><strong>편리한 체험 주문</strong><small>실제 결제 없는 시뮬레이션</small></div><div><span>✧</span><strong>신규 회원 3,000P</strong><small>회원가입 즉시 지급</small></div></div></section>
+
+    <section class="products-section container" id="products">
+      <div class="section-heading"><div><span class="section-kicker">HOWELL CURATION</span><h2>하우웰 추천 상품 <span class="heading-accent">50</span></h2></div><p>원하는 카테고리와 검색어로 찾아보세요.</p></div>
+      <div class="listing-toolbar"><div id="categoryChips" class="chips" aria-label="분류 필터"></div><div class="sort-wrap"><label class="sr-only" for="sortSelect">정렬</label><select id="sortSelect"><option value="id">추천순</option><option value="low">낮은 가격순</option><option value="high">높은 가격순</option><option value="name">이름순</option></select></div></div>
+      <div class="search-status" id="searchStatus" aria-live="polite"></div>
+      <div id="productGrid" class="product-grid"></div>
+      <div id="emptyState" class="empty-state" hidden><strong>검색 결과가 없습니다.</strong><p>검색어나 카테고리를 바꿔보세요.</p><button type="button" class="btn btn-outline" id="resetFilter">전체 상품 보기</button></div>
+    </section>
+
+    <section id="membership" class="membership-section"><div class="container membership-layout"><div class="member-head"><span class="section-kicker">HOWELL REWARDS</span><h2>함께할수록<br>더 커지는 혜택</h2><p>가입하면 3,000P를 드리고,<br>누적 구매금액에 따라 포인트가 더 많이 쌓여요.</p><button type="button" class="btn btn-dark" data-open="auth" data-mode="signup">하우웰 회원 되기 ↗</button></div><div id="tierCards" class="tier-grid"></div></div></section>
+
+    <section class="notice-section container"><div class="notice-card"><div><span class="section-kicker">PLEASE NOTE</span><h2>건강한 선택을 위한 안내</h2><p>의약품 카테고리는 정보 확인용입니다. 의약품은 온라인 장바구니 및 주문이 제한되며, 실제 구매·복용 상담은 적법한 약국을 이용해 주세요. 모든 상품과 재고·가격은 시연을 위한 예시입니다.</p></div><span class="notice-decoration" aria-hidden="true">✚</span></div></section>
+  </main>
+
+  <footer class="site-footer"><div class="container footer-content"><div><a href="./index.html" class="footer-brand">HOWELL<span>.</span></a><p>Better days, better you.<br>당신의 건강한 일상을 생각합니다.</p></div><div class="footer-info"><strong>하우웰 온라인 체험몰</strong><p>회원·주문·포인트는 이 브라우저에서만 저장됩니다.<br>실제 결제, 배송, 의약품 판매, 고객센터는 운영하지 않습니다.<br>© 2026 HOWELL. Demo website.</p></div></div></footer>
+
+  <div id="modalBackdrop" class="overlay" hidden>
+    <div id="authModal" class="dialog auth-dialog" role="dialog" aria-modal="true" aria-label="로그인 또는 회원가입" hidden>
+      <button class="close-btn" type="button" data-close aria-label="닫기">×</button><span class="section-kicker">HELLO, HOWELL</span><h2 id="authHeading">하우웰 로그인</h2>
+      <div class="tabs"><button type="button" id="loginTab" class="tab active" data-mode="login">로그인</button><button type="button" id="signupTab" class="tab" data-mode="signup">회원가입</button></div>
+      <form id="loginForm" class="stack-form"><label>이메일<input name="email" type="email" autocomplete="username" placeholder="demo@example.com" required></label><label>비밀번호<input name="password" type="password" autocomplete="current-password" minlength="6" required></label><button class="btn btn-primary full" type="submit">로그인</button></form>
+      <form id="signupForm" class="stack-form" hidden><label>이름<input name="name" type="text" maxlength="30" autocomplete="nickname" placeholder="사용할 이름" required></label><label>이메일<input name="email" type="email" autocomplete="off" placeholder="test@example.com" required></label><label>비밀번호<input name="password" type="password" autocomplete="new-password" minlength="6" placeholder="6자 이상 (가상 비밀번호만 사용)" required></label><label>비밀번호 확인<input name="confirm" type="password" autocomplete="new-password" minlength="6" required></label><button class="btn btn-primary full" type="submit">가입하고 3,000P 받기</button></form>
+      <p class="form-help">체험용 계정입니다. 실제 사용하는 이메일·비밀번호를 입력하지 마세요.</p>
+    </div>
+    <div id="detailModal" class="dialog detail-dialog" role="dialog" aria-modal="true" aria-label="상품 상세" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><div id="detailContent"></div></div>
+    <div id="mypageModal" class="dialog page-dialog" role="dialog" aria-modal="true" aria-label="마이페이지" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><div id="mypageContent"></div></div>
+    <div id="checkoutModal" class="dialog checkout-dialog" role="dialog" aria-modal="true" aria-label="체험 결제" hidden><button class="close-btn" type="button" data-close aria-label="닫기">×</button><span class="section-kicker">DEMO CHECKOUT</span><h2>체험 주문하기</h2><p class="form-help">실제 결제는 진행하지 않고 주문 내역만 저장합니다.</p>
+      <form id="checkoutForm" class="stack-form"><fieldset class="choice-group"><legend>수령 방법</legend><label><input type="radio" name="receiveMethod" value="delivery" checked> 배송</label><label><input type="radio" name="receiveMethod" value="pickup"> 매장 픽업</label></fieldset><div id="deliveryFields"><label>받는 사람<input name="receiver" type="text" maxlength="30" placeholder="받는 사람 이름"></label><label>배송 주소<input name="address" type="text" maxlength="100" placeholder="데모 주소 (실제 주소 입력 금지)"></label></div><div id="pickupFields" hidden><label>픽업 매장<select name="pickupStore" id="pickupStore"></select></label><p id="pickupInventory" class="form-help"></p></div><div class="price-box" id="checkoutSummary"></div><label>사용할 포인트<input type="number" name="points" id="usePoints" min="0" step="1" value="0"></label><div class="price-box strong" id="checkoutTotal"></div><button type="submit" class="btn btn-primary full">주문 내역 저장하기 (결제 없음)</button></form>
+    </div>
+  </div>
+
+  <div id="cartShade" class="cart-shade" hidden></div>
+  <aside id="cartPanel" class="cart-panel" aria-label="장바구니" aria-modal="true" role="dialog" hidden><div class="cart-top"><div><span class="section-kicker">YOUR BAG</span><h2>장바구니 <span id="cartTitleCount">0</span></h2></div><button class="close-btn inline" type="button" data-close aria-label="장바구니 닫기">×</button></div><div class="cart-list" id="cartItems"></div><div class="cart-bottom"><div class="cart-sum"><span>상품 합계</span><strong id="cartSubtotal">0원</strong></div><div class="cart-sum"><span>예상 배송비</span><strong id="cartShipping">0원</strong></div><div class="cart-sum total"><span>예상 합계</span><strong id="cartTotal">0원</strong></div><button class="btn btn-primary full" id="cartCheckout" type="button">체험 주문하기</button><p>4만원 이상 배송비 무료 · 매장 픽업 무료</p></div></aside>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
