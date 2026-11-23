@@ -1,4 +1,4 @@
-/* HOWELL · 과제 4: 상품 목록/검색/상세는 Supabase shop_products에서 조회. */
+/* HOWELL · 과제 5: 회원/상품 조회 및 체험 주문 DB 기록. */
 /* 회원 기능은 과제 3의 Supabase Auth와 shop_profiles를 그대로 사용합니다. */
 const CATEGORIES = ["전체", "건강식품", "화장품", "의약외품", "의약품"];
 const MEMBERSHIP_TIERS = [
@@ -16,7 +16,7 @@ const STORES = [
 ];
 // 회원/인증 정보는 앱 코드에서 localStorage로 저장하지 않습니다.
 // Supabase Auth SDK가 자체적으로 세션 토큰을 관리합니다(원본 비밀번호 저장 안 함).
-// 주문은 아직 다음 과제 대상이므로 새로고침 전까지만 메모리에 보관합니다.
+// 주문은 shop_orders, shop_order_items에만 저장하며 이 스크립트의 화면 캐시는 조회 전용입니다.
 /* 장바구니에만 DB 상품 id와 수량을 저장합니다. 회원·비밀번호·재고는 저장하지 않습니다. */
 const KEYS = { cart: "howell_cart_db_v1" };
 const getStored = (key, fallback) => { try { const raw=localStorage.getItem(key); return raw===null?fallback:JSON.parse(raw); } catch { return fallback; } };
@@ -37,11 +37,20 @@ const productById = new Map();
 let visibleProducts = [], listRequestVersion = 0, detailRequestVersion = 0;
 let productLoadError = false, productLoading = false;
 let currentUser = null, profile = null, authRequestVersion = 0;
-let orders = [], orderItems = []; // 과제 5 전까지 체험 주문은 임시 메모리에만 기록
-const savedCart = getStored(KEYS.cart, []);
-let cart = Array.isArray(savedCart) ? savedCart
-  .filter(row=>Number.isSafeInteger(Number(row?.id)) && Number(row.id)>0 && Number.isSafeInteger(Number(row.qty)) && Number(row.qty)>0)
-  .map(row=>({id:Number(row.id),qty:Number(row.qty)})) : [];
+let orders = [], orderItems = []; // Supabase에서 조회한 본인 주문 캐시
+let checkoutSubmitting = false, pendingOrder = null;
+function mergeCartQuantities(rows){
+  const byId=new Map();
+  for(const row of Array.isArray(rows)?rows:[]){
+    const id=Number(row?.id),qty=Number(row?.qty);
+    if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(qty)||qty<1)continue;
+    const combined=(byId.get(id)||0)+qty;
+    if(Number.isSafeInteger(combined))byId.set(id,combined);
+  }
+  return [...byId].map(([id,qty])=>({id,qty}));
+}
+let cart=mergeCartQuantities(getStored(KEYS.cart,[]));
+save(KEYS.cart,cart);
 let activeCategory="전체", searchTerm="", sortBy="id", detailId=null, detailQty=1;
 let slideIndex=0, slideTimer=null, toastTimer=null, searchTimer=null;
 const currentMember = () => currentUser ? profile : null;
@@ -51,7 +60,6 @@ const isMedicine = p => p?.category === "의약품";
 const canPurchase = p => Boolean(p && p.is_active && !isMedicine(p) && stockOf(p)>0);
 const cartRows = () => cart.map(row=>({...row,product:productById.get(row.id)||null}));
 const subtotal = () => cartRows().reduce((sum,row)=>sum+(row.product?Number(row.product.price)*row.qty:0),0);
-const shipping = (sum,method="delivery") => method==="pickup"||sum>=40000?0:3000;
 function toast(message){const el=$("#toast");el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3300);}
 function productImageUrl(product){
   const path=String(product?.image_url||"").trim();
@@ -195,8 +203,8 @@ function renderCart(){
     return `<article class="cart-item"><img src="${safe(productImageUrl(p))}" alt="${safe(p.name)}"><div><h4>${safe(p.name)}</h4><p>${money(Number(p.price)*r.qty)}</p>${available?'':`<small class="stock-note">${stockOf(p)===0?'품절':'구매 가능 수량 초과 또는 주문 불가'}</small>`}<div class="cart-item-bottom"><div class="qty-controls"><button type="button" data-qty="${r.id}" data-delta="-1" aria-label="수량 감소">−</button><span>${r.qty}</span><button type="button" data-qty="${r.id}" data-delta="1" aria-label="수량 증가" ${!canPurchase(p)||r.qty>=stockOf(p)?'disabled':''}>＋</button></div><button class="text-btn" type="button" data-remove="${r.id}">삭제</button></div></div></article>`;
   }).join(""):`<div class="cart-empty"><h3>장바구니가 비어 있어요</h3><p>필요한 상품을 골라 담아보세요.</p><button class="btn btn-outline" type="button" data-close>상품 둘러보기</button></div>`;
   $("#cartSubtotal").textContent=money(sub);
-  $("#cartShipping").textContent=money(rows.length?shipping(sub):0);
-  $("#cartTotal").textContent=money(rows.length?sub+shipping(sub):0);
+  $("#cartShipping").textContent="0원";
+  $("#cartTotal").textContent=money(sub);
   $("#cartCheckout").disabled=!canCheckoutCart();
 }
 function openCart(){closeModal();renderCart();$("#cartShade").hidden=false;$("#cartPanel").hidden=false;document.body.style.overflow="hidden";void hydrateCartProducts();}
@@ -366,6 +374,7 @@ async function handleLogout() {
     profile=null;
     orders=[];
     orderItems=[];
+    pendingOrder=null;
     closeModal();
     renderHeader();
     toast("로그아웃했습니다.");
@@ -375,42 +384,71 @@ async function handleLogout() {
   }
 }
 
-function renderMyPage() {
-  const m=currentMember();
-  if(!m) return;
+async function loadMyOrders(userId){
+  const {data:rows,error:orderError}=await db.from('shop_orders')
+    .select('id,user_id,total,status,created_at').eq('user_id',userId)
+    .order('created_at',{ascending:false});
+  if(orderError)throw orderError;
+  const ordersList=rows||[];
+  if(!ordersList.length)return {orders:[],items:[]};
+  const {data:items,error:itemError}=await db.from('shop_order_items')
+    .select('order_id,product_id,qty,unit_price')
+    .in('order_id',ordersList.map(o=>o.id));
+  if(itemError)throw itemError;
+  const ids=[...new Set((items||[]).map(it=>Number(it.product_id)))];
+  const names=new Map();
+  if(ids.length){
+    const {data:products,error:productError}=await db.from('shop_products')
+      .select('id,name').in('id',ids);
+    if(productError)throw productError;
+    for(const p of products||[])names.set(Number(p.id),p.name);
+  }
+  return {orders:ordersList,items:(items||[]).map(it=>({
+    ...it,name:names.get(Number(it.product_id))||productById.get(Number(it.product_id))?.name||`상품 #${it.product_id}`
+  }))};
+}
+
+function renderMyPage(){
+  const m=currentMember();if(!m)return;
   const tier=tierFor(m.grade);
-  const mine=orders.filter(o=>o.memberId===m.id).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
-  $("#mypageContent").innerHTML=`
+  const mine=[...orders].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  $('#mypageContent').innerHTML=`
     <span class="section-kicker">MY HOWELL</span>
-    <h2>${safe(m.name||"회원")}님의 마이페이지</h2>
+    <h2>${safe(m.name||'회원')}님의 마이페이지</h2>
     <div class="mypage-overview">
       <div><small>현재 등급</small><br><strong>${safe(tier.name)}</strong><p class="mypage-info">DB 등급 ${safe(m.grade)} · 적립률 안내 ${Math.round(tier.rate*100)}%</p></div>
-      <div><small>보유 포인트</small><br><strong>${Number(m.points||0).toLocaleString("ko-KR")}P</strong><p class="mypage-info">포인트는 DB에서 관리됩니다.</p></div>
+      <div><small>보유 포인트</small><br><strong>${Number(m.points||0).toLocaleString('ko-KR')}P</strong><p class="mypage-info">포인트는 DB에서 관리됩니다. 체험 주문에서는 적립되지 않습니다.</p></div>
     </div>
     <form id="profileEditForm" class="stack-form">
-      <label>이메일<input type="email" value="${safe(m.email||currentUser?.email||"")}" readonly></label>
-      <label>이름<input name="name" type="text" maxlength="30" minlength="2" value="${safe(m.name||"")}" autocomplete="name" required></label>
-      <label>연락처<input name="phone" type="tel" maxlength="20" value="${safe(m.phone||"")}" autocomplete="tel" required></label>
-      <p class="form-help">등급 · 포인트 · 관리자 권한은 조회만 가능하며 여기에서 수정할 수 없습니다.</p>
+      <label>이메일<input type="email" value="${safe(m.email||currentUser?.email||'')}" readonly></label>
+      <label>이름<input name="name" type="text" maxlength="30" minlength="2" value="${safe(m.name||'')}" autocomplete="name" required></label>
+      <label>연락처<input name="phone" type="tel" maxlength="20" value="${safe(m.phone||'')}" autocomplete="tel" required></label>
+      <p class="form-help">등급 · 포인트 · 관리자 권한은 조회만 가능하며 수정할 수 없습니다.</p>
       <button class="btn btn-primary full" type="submit">이름 · 연락처 저장하기</button>
     </form>
     <div class="order-list"><h3>체험 주문 내역 (${mine.length}건)</h3>
-      ${mine.length?mine.map(o=>{const items=orderItems.filter(it=>it.orderId===o.id);return `<article class="order-row"><h4>${safe(o.id)} <span class="product-cat">${o.receiveMethod==='pickup'?'매장 픽업':'배송'} · 체험 주문</span></h4><p>${safe(new Date(o.createdAt).toLocaleString('ko-KR'))} · ${items.map(it=>safe(it.name)+` ×${it.qty}`).join(', ')}</p><strong>${money(o.total)}</strong> <small> · 결제 없음</small></article>`;}).join(''):`<p class="form-help">아직 체험 주문 내역이 없습니다. 현재 단계에서는 주문이 DB에 저장되지 않습니다.</p>`}
+      ${mine.length?mine.map(o=>{
+        const details=orderItems.filter(it=>String(it.order_id)===String(o.id));
+        const description=details.map(it=>`${safe(it.name)} ×${Number(it.qty)}`).join(', ');
+        return `<article class="order-row"><h4>주문 #${safe(o.id)} <span class="product-cat">${safe(o.status||'확인 중')}</span></h4><p>${safe(new Date(o.created_at).toLocaleString('ko-KR'))}</p><p>${description||'주문 상세가 아직 없습니다.'}</p><strong>${money(o.total)}</strong><small> · 실제 결제 없음</small></article>`;
+      }).join(''):'<p class="form-help">저장된 주문 내역이 없습니다.</p>'}
     </div>
     <button class="btn btn-outline full" type="button" data-action="logout" style="margin-top:22px">로그아웃</button>`;
 }
 
-async function openMyPage() {
-  if(!currentUser) {toast("마이페이지 이용을 위해 먼저 로그인해 주세요.");openAuth("login");return;}
-  try {
-    // 열 때마다 DB에서 내 회원정보를 다시 읽습니다.
-    profile=await loadMyProfile(currentUser.id);
-    renderHeader();
-    renderMyPage();
-    showModal("mypage");
-  } catch(error) {
-    console.error("마이페이지 조회 실패:",error);
-    toast(authErrorMessage(error,"profile"));
+async function openMyPage(){
+  if(!currentUser){toast('마이페이지 이용을 위해 먼저 로그인해 주세요.');openAuth('login');return;}
+  const userId=currentUser.id;
+  showModal('mypage');$('#mypageContent').textContent='불러오는 중';
+  try{
+    const [loadedProfile,history]=await Promise.all([loadMyProfile(userId),loadMyOrders(userId)]);
+    if(currentUser?.id!==userId)return;
+    profile=loadedProfile;orders=history.orders;orderItems=history.items;
+    renderHeader();renderMyPage();
+  }catch(error){
+    console.error('마이페이지 주문 조회 실패:',error);
+    $('#mypageContent').textContent=`주문 내역 조회 오류: ${error.message||'권한(RLS)을 확인해 주세요.'}`;
+    toast('주문 조회에 실패했습니다. SQL/RLS 설정을 확인해 주세요.');
   }
 }
 
@@ -445,47 +483,134 @@ async function handleProfileUpdate(ev) {
 }
 
 
-// 과제 4에서는 주문/실재고/포인트를 서버에 기록하지 않습니다. 주문 기능은 과제 5에서 연결합니다.
+// 실결제 없이 두 개의 Supabase 테이블에 체험 주문을 저장합니다.
 function renderCheckout(){
   const m=currentMember();if(!m)return;
-  const form=$("#checkoutForm");form.reset();form.elements.receiver.value=m.name;
-  $("#pickupStore").innerHTML=STORES.filter(s=>s.pickup).map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join("");
-  updateCheckout();
+  const form=$('#checkoutForm');form.reset();form.elements.receiver.value=m.name||'';
+  $('#pickupStore').innerHTML=STORES.filter(s=>s.pickup).map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join('');
+  setCheckoutError('');updateCheckout();
+}
+function setCheckoutError(message){
+  const element=$('#checkoutError');if(!element)return;
+  element.textContent=message;element.hidden=!message;
 }
 function updateCheckout(){
-  const form=$("#checkoutForm"),m=currentMember();if(!m)return;
-  const method=form.elements.receiveMethod.value,sub=subtotal(),fee=shipping(sub,method);
-  $("#deliveryFields").hidden=method!=="delivery";
-  $("#pickupFields").hidden=method!=="pickup";
+  const form=$('#checkoutForm'),m=currentMember();if(!m)return;
+  const method=form.elements.receiveMethod.value,sub=subtotal();
+  $('#deliveryFields').hidden=method!=='delivery';
+  $('#pickupFields').hidden=method!=='pickup';
   const bad=cartRows().filter(r=>!canPurchase(r.product)||r.qty>stockOf(r.product));
-  $("#pickupInventory").textContent=method==="pickup" ?
-    (bad.length?"품절 또는 재고 부족 상품이 있습니다. 장바구니를 확인해 주세요.":"매장별 실재고는 아직 연결되지 않았습니다. 화면에는 DB의 상품 재고만 표시합니다."):"";
-  $("#usePoints").value="0";
-  $("#checkoutSummary").innerHTML=`<div class="price-row"><span>상품금액</span><strong>${money(sub)}</strong></div><div class="price-row"><span>${method==='pickup'?'매장 픽업':'배송비'}</span><strong>${money(fee)}</strong></div><div class="price-row"><span>보유 포인트</span><strong>${Number(m.points||0).toLocaleString()}P</strong></div>`;
-  $("#checkoutTotal").innerHTML=`<div class="price-row"><span>포인트 사용</span><strong>−0P</strong></div><div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub+fee)}</strong></div><p class="form-help" style="margin:0">현재 ${tierFor(m.grade).name} 등급 · 예상 적립 ${Math.floor(sub*tierFor(m.grade).rate).toLocaleString()}P</p>`;
+  $('#pickupInventory').textContent=method==='pickup'?(bad.length?'품절 또는 재고 부족 상품이 있습니다.':'매장별 실재고 연동은 제공되지 않습니다.'):'';
+  $('#usePoints').value='0';
+  $('#checkoutSummary').innerHTML=`<div class="price-row"><span>상품금액</span><strong>${money(sub)}</strong></div><div class="price-row"><span>배송비 (체험 주문 미청구)</span><strong>0원</strong></div><div class="price-row"><span>보유 포인트</span><strong>${Number(m.points||0).toLocaleString()}P</strong></div>`;
+  $('#checkoutTotal').innerHTML=`<div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub)}</strong></div><p class="form-help" style="margin:0">적립 예정 ${Math.floor(sub*tierFor(m.grade).rate).toLocaleString('ko-KR')}P · 실제 적립/사용은 하지 않습니다.</p>`;
 }
 function openCheckout(){
-  if(!cart.length){toast("장바구니가 비어 있습니다.");return;}
-  if(!canCheckoutCart()){toast("품절이거나 재고가 부족한 상품을 장바구니에서 정리해 주세요.");return;}
-  if(!currentMember()){closeCart();toast("체험 주문을 위해 로그인해 주세요.");openAuth();return;}
-  showModal("checkout");renderCheckout();
+  if(!currentUser){closeCart();toast('체험 주문을 위해 먼저 로그인해 주세요.');openAuth('login');return;}
+  if(!cart.length){toast('장바구니가 비어 있습니다.');return;}
+  if(!canCheckoutCart()){toast('품절이거나 재고가 부족한 상품을 장바구니에서 정리해 주세요.');return;}
+  showModal('checkout');renderCheckout();
 }
-function handleCheckout(ev){
+function makeOrderPayload(cartSnapshot,catalog){
+  const rows=mergeCartQuantities(cartSnapshot);
+  if(!rows.length)throw Error('장바구니가 비어 있습니다.');
+  const map=new Map(catalog.map(p=>[Number(p.id),p]));
+  const items=rows.map(row=>{
+    const p=map.get(row.id);
+    if(!canPurchase(p))throw Error(`구매할 수 없는 상품입니다. (#${row.id})`);
+    if(row.qty>stockOf(p))throw Error(`현재 재고보다 많이 담은 상품이 있습니다. (${p.name})`);
+    const price=Number(p.price);
+    if(!Number.isSafeInteger(price)||price<0)throw Error('상품 가격이 올바르지 않습니다.');
+    return {product_id:row.id,qty:row.qty,unit_price:price};
+  });
+  const total=items.reduce((sum,item)=>sum+item.qty*item.unit_price,0);
+  if(!Number.isSafeInteger(total)||total<0)throw Error('주문금액이 허용 범위를 초과합니다.');
+  return {items,total};
+}
+function orderErrorMessage(error){
+  const code=String(error?.code||''),message=String(error?.message||'');
+  if(code==='42501'||/permission denied|row-level security/i.test(message))return `주문 저장 권한이 없습니다. SQL의 RLS 정책을 확인해 주세요. (${message||code})`;
+  if(code==='42P01'||code==='PGRST205')return `주문 테이블을 찾지 못했습니다. (${message||code})`;
+  if(code==='23503')return `상품 또는 주문번호에 문제가 있습니다. (${message})`;
+  if(code==='23505')return `이미 저장된 상품이 있습니다. (${message})`;
+  return `주문 저장 오류: ${message||'인터넷 연결과 DB 설정을 확인해 주세요.'}`;
+}
+async function verifySavedOrder(orderId,total){
+  try{
+    const {data,error}=await db.from('shop_order_items').select('qty,unit_price').eq('order_id',orderId);
+    if(error)throw error;
+    const itemSum=(data||[]).reduce((sum,r)=>sum+Number(r.qty)*Number(r.unit_price),0);
+    if(itemSum===total)console.info(`주문 #${orderId} 합계 검증 통과: ${total} = ${itemSum}`);
+    else console.error(`주문 #${orderId} 합계 불일치: 주문 ${total}, 상세 합 ${itemSum}`);
+  }catch(error){console.warn('주문 저장 후 합계 재검증 실패:',error);}
+}
+function showOrderComplete(orderId,total,expectedPoints){
+  showModal('orderComplete');
+  $('#orderCompleteContent').innerHTML=`<span class="section-kicker">HOWELL ORDER</span><h2>체험 주문 완료</h2><p class="form-help">실제 카드 결제·배송은 진행되지 않습니다.</p><div class="price-box strong"><div class="price-row"><span>주문 번호</span><strong>#${safe(orderId)}</strong></div><div class="price-row"><span>주문 합계</span><strong>${money(total)}</strong></div><div class="price-row"><span>적립 예정 (실제 적립 없음)</span><strong>${Number(expectedPoints).toLocaleString('ko-KR')}P</strong></div></div><button type="button" class="btn btn-primary full" data-open="mypage">마이페이지에서 주문 확인</button><button type="button" class="btn btn-outline full" data-close style="margin-top:10px">쇼핑 계속하기</button>`;
+}
+async function handleCheckout(ev){
   ev.preventDefault();
-  const m=currentMember();if(!m){openAuth();return;}
-  const form=ev.currentTarget,method=form.elements.receiveMethod.value;
-  if(!canCheckoutCart()){toast("품절이거나 재고가 부족한 상품이 있습니다.");return;}
-  if(method==="delivery"&&(!form.elements.receiver.value.trim()||!form.elements.address.value.trim())){
-    toast("체험용 수령인과 주소를 입력해 주세요. 실제 주소는 입력하지 마세요.");return;
+  if(checkoutSubmitting)return;
+  const form=ev.currentTarget;
+  const sessionResponse=await db.auth.getSession();
+  if(sessionResponse.error||!sessionResponse.data?.session?.user){
+    setCheckoutError('로그인 후 체험 주문을 진행해 주세요.');openAuth('login');return;
   }
-  const rows=cartRows(),sub=subtotal(),fee=shipping(sub,method),tier=tierFor(m.grade);
-  const order={id:`HW-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*1000)}`,memberId:m.id,receiveMethod:method,storeId:method==="pickup"?form.elements.pickupStore.value:"wh",status:"체험 주문 완료",subtotal:sub,shippingFee:fee,pointsUsed:0,total:sub+fee,earned:Math.floor(sub*tier.rate),createdAt:new Date().toISOString()};
-  orders.push(order);
-  for(const r of rows) orderItems.push({orderId:order.id,productId:r.id,name:r.product.name,price:r.product.price,qty:r.qty});
-  // 주문은 화면 내 임시 기록이며 DB 상품 stock은 절대로 차감하지 않습니다.
-  cart=[];save(KEYS.cart,cart);
-  renderHeader();renderCart();paintProducts();void openMyPage();
-  toast(`체험 주문 ${order.id} 작성 완료 · DB 재고/포인트 미변경`);
+  const userId=sessionResponse.data.session.user.id;
+  if(currentUser?.id!==userId){setCheckoutError('로그인 상태가 변경되었습니다. 다시 로그인해 주세요.');return;}
+  const snapshot=mergeCartQuantities(cart);
+  if(!snapshot.length){setCheckoutError('장바구니가 비어 있습니다.');return;}
+  const submit=form.querySelector('button[type="submit"]');
+  checkoutSubmitting=true;submit.disabled=true;submit.textContent='주문 저장 중…';setCheckoutError('');
+  let savedOrderId=null;
+  try{
+    // 가격과 수량은 버튼 클릭 직전 Supabase의 최신 상품정보로 다시 계산합니다.
+    const {data:catalog,error:catalogError}=await db.from('shop_products')
+      .select('id,name,category,price,stock,is_active').eq('is_active',true)
+      .in('id',snapshot.map(row=>row.id));
+    if(catalogError)throw catalogError;
+    const {items,total}=makeOrderPayload(snapshot,catalog||[]);
+    const detailSum=items.reduce((sum,item)=>sum+item.qty*item.unit_price,0);
+    if(detailSum!==total)throw Error('주문 상세의 합계와 total이 일치하지 않습니다.');
+    const fingerprint=JSON.stringify({items,total});
+    if(pendingOrder?.userId===userId&&pendingOrder.fingerprint!==fingerprint)
+      throw Error("이전 주문의 상세 저장이 완료되지 않았습니다. 원래 장바구니 수량으로 재시도하거나 새로고침 후 Table Editor에서 미완료 주문을 먼저 확인해 주세요.");
+    if(pendingOrder?.userId===userId&&pendingOrder.fingerprint===fingerprint){
+      savedOrderId=pendingOrder.orderId;
+    }else{
+      // user_id/status/points/stock은 보내지 않습니다. DB가 기본값을 설정합니다.
+      const {data:order,error:orderError}=await db.from('shop_orders')
+        .insert({total}).select().single();
+      if(orderError)throw orderError;
+      savedOrderId=order.id;
+      pendingOrder={userId,orderId:savedOrderId,fingerprint};
+    }
+    // 같은 상품은 합산된 수량으로 order_id 당 단 하나의 행만 INSERT.
+    const payload=items.map(item=>({order_id:savedOrderId,...item}));
+    const {error:detailsError}=await db.from('shop_order_items').insert(payload);
+    if(detailsError){
+      if(detailsError.code==='23505'){
+        // 상세 INSERT 성공 후 응답만 유실됐던 경우의 중복 저장 대응.
+        const {data:existing,error:readError}=await db.from('shop_order_items')
+          .select('product_id,qty,unit_price').eq('order_id',savedOrderId);
+        const sorted=rows=>JSON.stringify([...rows].sort((a,b)=>Number(a.product_id)-Number(b.product_id)));
+        if(readError||sorted(existing||[])!==sorted(items))throw detailsError;
+      }else throw detailsError;
+    }
+    pendingOrder=null;
+    cart=[];save(KEYS.cart,cart);renderHeader();renderCart();
+    const expected=Math.floor(total*tierFor(profile?.grade||'WELCOME').rate);
+    showOrderComplete(savedOrderId,total,expected);
+    void verifySavedOrder(savedOrderId,total);
+  }catch(error){
+    console.error('Supabase 주문 저장 실패:',error);
+    const additional=savedOrderId?`주문 #${savedOrderId}은 생성되었지만 상세 저장이 완료되지 않았습니다. 같은 내용으로 재시도하면 해당 주문에 다시 저장합니다. `:'';
+    setCheckoutError(additional+orderErrorMessage(error));
+    toast('저장에 실패했습니다. 장바구니는 그대로 유지됩니다.');
+  }finally{
+    checkoutSubmitting=false;submit.disabled=false;
+    submit.textContent='체험 주문 저장하기 (실제 결제 없음)';
+  }
 }
 
 function setSlide(index){const slides=[...document.querySelectorAll('.hero-slide')];slideIndex=(index+slides.length)%slides.length;slides.forEach((s,i)=>{s.classList.toggle('active',i===slideIndex);s.setAttribute('aria-hidden',String(i!==slideIndex));s.querySelectorAll('button').forEach(b=>b.tabIndex=i===slideIndex?0:-1);});document.querySelectorAll('#heroDots button').forEach((b,i)=>{b.classList.toggle('active',i===slideIndex);b.setAttribute('aria-pressed',String(i===slideIndex));});}
