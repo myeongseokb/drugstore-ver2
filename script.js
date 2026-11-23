@@ -1,564 +1,11 @@
-/* HOWELL · 과제 3: 상품/주문은 데모, 회원 인증/프로필만 Supabase 연동. */
-/* 상품 배열은 이번 과제에서 변경하지 않습니다. */
+/* HOWELL · 과제 4: 상품 목록/검색/상세는 Supabase shop_products에서 조회. */
+/* 회원 기능은 과제 3의 Supabase Auth와 shop_profiles를 그대로 사용합니다. */
 const CATEGORIES = ["전체", "건강식품", "화장품", "의약외품", "의약품"];
 const MEMBERSHIP_TIERS = [
   { grade: "WELCOME", name: "GREEN", rate: 0.01, label: "기본 회원", icon: "☘" },
   { grade: "SILVER", name: "SILVER", rate: 0.03, label: "누적 10만원", icon: "✧" },
   { grade: "GOLD", name: "GOLD", rate: 0.05, label: "누적 30만원", icon: "✦" },
   { grade: "VIP", name: "PLATINUM", rate: 0.07, label: "누적 60만원", icon: "◆" }
-];
-const PRODUCTS = 
-[
-  {
-    "id": 1,
-    "name": "해열진통제 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-01.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "해열진통제 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 2,
-    "name": "종합감기약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-02.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "종합감기약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 3,
-    "name": "소화제 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-03.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "소화제 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 4,
-    "name": "알레르기약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-04.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "알레르기약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 5,
-    "name": "기침약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-05.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "기침약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 6,
-    "name": "상처 치료 연고 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-06.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "상처 치료 연고 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 7,
-    "name": "소염진통제 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-07.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "소염진통제 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 8,
-    "name": "멀미약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-08.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "멀미약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 9,
-    "name": "안약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-09.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "안약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 10,
-    "name": "변비약 안내",
-    "category": "의약품",
-    "price": 0,
-    "stock": 0,
-    "image": "img/product-10.webp",
-    "tag": "매장상담",
-    "purchasable": false,
-    "description": "변비약 안내의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 11,
-    "name": "데일리 멀티비타민",
-    "category": "건강식품",
-    "price": 21600,
-    "stock": 16,
-    "image": "img/product-11.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "데일리 멀티비타민의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 12,
-    "name": "비타민 C 1000",
-    "category": "건강식품",
-    "price": 26300,
-    "stock": 23,
-    "image": "img/product-12.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "비타민 C 1000의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 13,
-    "name": "비타민 D3",
-    "category": "건강식품",
-    "price": 31000,
-    "stock": 30,
-    "image": "img/product-13.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "비타민 D3의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 14,
-    "name": "루테인 플러스",
-    "category": "건강식품",
-    "price": 35700,
-    "stock": 37,
-    "image": "img/product-14.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "루테인 플러스의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 15,
-    "name": "오메가3 캡슐",
-    "category": "건강식품",
-    "price": 40400,
-    "stock": 44,
-    "image": "img/product-15.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "오메가3 캡슐의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 16,
-    "name": "프로바이오틱스",
-    "category": "건강식품",
-    "price": 45100,
-    "stock": 51,
-    "image": "img/product-16.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "프로바이오틱스의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 17,
-    "name": "아연 미네랄",
-    "category": "건강식품",
-    "price": 11800,
-    "stock": 58,
-    "image": "img/product-17.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "아연 미네랄의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 18,
-    "name": "마그네슘 밸런스",
-    "category": "건강식품",
-    "price": 16500,
-    "stock": 65,
-    "image": "img/product-18.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "마그네슘 밸런스의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 19,
-    "name": "콜라겐 펩타이드",
-    "category": "건강식품",
-    "price": 21200,
-    "stock": 72,
-    "image": "img/product-19.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "콜라겐 펩타이드의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 20,
-    "name": "데일리 단백질 파우더",
-    "category": "건강식품",
-    "price": 25900,
-    "stock": 79,
-    "image": "img/product-20.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "데일리 단백질 파우더의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 21,
-    "name": "식이섬유 파우더",
-    "category": "건강식품",
-    "price": 30600,
-    "stock": 86,
-    "image": "img/product-21.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "식이섬유 파우더의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 22,
-    "name": "전해질 스틱",
-    "category": "건강식품",
-    "price": 35300,
-    "stock": 17,
-    "image": "img/product-22.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "전해질 스틱의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 23,
-    "name": "데일리 견과 믹스",
-    "category": "건강식품",
-    "price": 40000,
-    "stock": 24,
-    "image": "img/product-23.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "데일리 견과 믹스의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 24,
-    "name": "캐모마일 허브티",
-    "category": "건강식품",
-    "price": 44700,
-    "stock": 31,
-    "image": "img/product-24.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "캐모마일 허브티의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 25,
-    "name": "히알루론 수분 세럼",
-    "category": "화장품",
-    "price": 11400,
-    "stock": 38,
-    "image": "img/product-25.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "히알루론 수분 세럼의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 26,
-    "name": "세라마이드 장벽 크림",
-    "category": "화장품",
-    "price": 16100,
-    "stock": 45,
-    "image": "img/product-26.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "세라마이드 장벽 크림의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 27,
-    "name": "판테놀 진정 크림",
-    "category": "화장품",
-    "price": 20800,
-    "stock": 52,
-    "image": "img/product-27.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "판테놀 진정 크림의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 28,
-    "name": "시카 밸런스 토너",
-    "category": "화장품",
-    "price": 25500,
-    "stock": 59,
-    "image": "img/product-28.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "시카 밸런스 토너의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 29,
-    "name": "데일리 선크림 SPF50+",
-    "category": "화장품",
-    "price": 30200,
-    "stock": 66,
-    "image": "img/product-29.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "데일리 선크림 SPF50+의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 30,
-    "name": "저자극 클렌징 젤",
-    "category": "화장품",
-    "price": 34900,
-    "stock": 73,
-    "image": "img/product-30.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "저자극 클렌징 젤의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 31,
-    "name": "약산성 폼 클렌저",
-    "category": "화장품",
-    "price": 39600,
-    "stock": 80,
-    "image": "img/product-31.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "약산성 폼 클렌저의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 32,
-    "name": "비타민C 브라이트 세럼",
-    "category": "화장품",
-    "price": 44300,
-    "stock": 87,
-    "image": "img/product-32.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "비타민C 브라이트 세럼의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 33,
-    "name": "레티놀 나이트 세럼",
-    "category": "화장품",
-    "price": 11000,
-    "stock": 18,
-    "image": "img/product-33.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "레티놀 나이트 세럼의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 34,
-    "name": "무향 바디로션",
-    "category": "화장품",
-    "price": 15700,
-    "stock": 25,
-    "image": "img/product-34.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "무향 바디로션의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 35,
-    "name": "시어버터 핸드크림",
-    "category": "화장품",
-    "price": 20400,
-    "stock": 32,
-    "image": "img/product-35.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "시어버터 핸드크림의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 36,
-    "name": "너리싱 립밤",
-    "category": "화장품",
-    "price": 25100,
-    "stock": 39,
-    "image": "img/product-36.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "너리싱 립밤의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 37,
-    "name": "스칼프 밸런스 샴푸",
-    "category": "화장품",
-    "price": 29800,
-    "stock": 46,
-    "image": "img/product-37.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "스칼프 밸런스 샴푸의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 38,
-    "name": "헤어 리페어 트리트먼트",
-    "category": "화장품",
-    "price": 34500,
-    "stock": 53,
-    "image": "img/product-38.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "헤어 리페어 트리트먼트의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 39,
-    "name": "수분 미스트",
-    "category": "화장품",
-    "price": 39200,
-    "stock": 60,
-    "image": "img/product-39.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "수분 미스트의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 40,
-    "name": "데일리 아이크림",
-    "category": "화장품",
-    "price": 43900,
-    "stock": 67,
-    "image": "img/product-40.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "데일리 아이크림의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 41,
-    "name": "진정 토너 패드",
-    "category": "화장품",
-    "price": 10600,
-    "stock": 74,
-    "image": "img/product-41.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "진정 토너 패드의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 42,
-    "name": "소프트 클렌징 오일",
-    "category": "화장품",
-    "price": 15300,
-    "stock": 81,
-    "image": "img/product-42.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "소프트 클렌징 오일의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 43,
-    "name": "불소 치약",
-    "category": "의약외품",
-    "price": 20000,
-    "stock": 88,
-    "image": "img/product-43.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "불소 치약의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 44,
-    "name": "구강청결액",
-    "category": "의약외품",
-    "price": 24700,
-    "stock": 19,
-    "image": "img/product-44.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "구강청결액의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 45,
-    "name": "일회용 반창고",
-    "category": "의약외품",
-    "price": 29400,
-    "stock": 26,
-    "image": "img/product-45.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "일회용 반창고의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 46,
-    "name": "방수형 반창고",
-    "category": "의약외품",
-    "price": 34100,
-    "stock": 33,
-    "image": "img/product-46.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "방수형 반창고의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 47,
-    "name": "보건용 마스크 KF94",
-    "category": "의약외품",
-    "price": 38800,
-    "stock": 40,
-    "image": "img/product-47.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "보건용 마스크 KF94의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 48,
-    "name": "손 소독겔",
-    "category": "의약외품",
-    "price": 43500,
-    "stock": 47,
-    "image": "img/product-48.webp",
-    "tag": "데일리",
-    "purchasable": true,
-    "description": "손 소독겔의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 49,
-    "name": "여성용 위생 패드",
-    "category": "의약외품",
-    "price": 10200,
-    "stock": 54,
-    "image": "img/product-49.webp",
-    "tag": "추천",
-    "purchasable": true,
-    "description": "여성용 위생 패드의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  },
-  {
-    "id": 50,
-    "name": "멸균 거즈 패드",
-    "category": "의약외품",
-    "price": 14900,
-    "stock": 61,
-    "image": "img/product-50.webp",
-    "tag": "NEW",
-    "purchasable": true,
-    "description": "멸균 거즈 패드의 데모 상품 정보입니다. 실제 상품의 표시사항과 설명을 확인해 주세요."
-  }
 ];
 
 /* 픽업용 매장 예시. 실제 사업 시 별도 stores 테이블로 이전합니다. */
@@ -570,39 +17,55 @@ const STORES = [
 // 회원/인증 정보는 앱 코드에서 localStorage로 저장하지 않습니다.
 // Supabase Auth SDK가 자체적으로 세션 토큰을 관리합니다(원본 비밀번호 저장 안 함).
 // 주문은 아직 다음 과제 대상이므로 새로고침 전까지만 메모리에 보관합니다.
-const KEYS = { cart: "howell_cart_v1", inventory: "howell_inventory_v1" };
+/* 장바구니에만 DB 상품 id와 수량을 저장합니다. 회원·비밀번호·재고는 저장하지 않습니다. */
+const KEYS = { cart: "howell_cart_db_v1" };
 const getStored = (key, fallback) => { try { const raw=localStorage.getItem(key); return raw===null?fallback:JSON.parse(raw); } catch { return fallback; } };
 const save = (key,data) => localStorage.setItem(key,JSON.stringify(data));
-// 구버전 체험 회원(ID, salt, password hash 등)과 연결된 주문 기록을 제거합니다.
-// 기존 체험 회원은 Supabase Auth 계정으로 자동 이전되지 않습니다.
+// 과거 데모 데이터의 로컬 회원·주문·가상 재고 기록 제거(상품 재고는 DB만 사용).
 try {
-  for (const legacyKey of ["howell_members_v1", "howell_current_v1", "howell_orders_v1", "howell_order_items_v1"]) {
+  for (const legacyKey of ["howell_members_v1", "howell_current_v1", "howell_orders_v1", "howell_order_items_v1", "howell_inventory_v1", "howell_cart_v1"]) {
     localStorage.removeItem(legacyKey);
   }
-} catch(error) {
-  console.warn("구버전 로컬 회원정보 정리 실패:", error);
-}
+} catch (error) { console.warn("이전 체험 데이터 정리 실패:", error); }
 const money = n => Number(n).toLocaleString("ko-KR")+"원";
 const safe = text => String(text).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));
 const $ = selector => document.querySelector(selector);
-const initialInventory = () => Object.fromEntries(PRODUCTS.filter(p=>p.purchasable).flatMap(p=>STORES.map(s=>[
-  `${s.id}:${p.id}`, s.id==="wh"?p.stock:Math.max(0,Math.floor(p.stock/(s.id==="seoul"?4:3))-(p.id%7===0?9:0))
-])));
-let currentUser = null; // Supabase Auth의 현재 사용자(메모리에만 참조)
-let profile = null;     // public.shop_profiles에서 읽은 내 회원정보(메모리에만 참조)
-let authRequestVersion = 0;
-let orders = [], orderItems = []; // 체험 주문은 현재 페이지의 메모리에만 유지
-let cart=getStored(KEYS.cart,[]),inventory=getStored(KEYS.inventory,initialInventory());
-let activeCategory="전체",searchTerm="",sortBy="id",detailId=null,detailQty=1;
-let slideIndex=0,slideTimer=null,toastTimer=null;
+const DEFAULT_IMAGE = "./img/product-placeholder.svg";
+const PRODUCT_COLUMNS = "id,name,category,price,stock,image_url,is_active";
+// DB에서 가져온 상품만 담는 화면 캐시; 하드코딩된 상품 데이터는 없습니다.
+const productById = new Map();
+let visibleProducts = [], listRequestVersion = 0, detailRequestVersion = 0;
+let productLoadError = false, productLoading = false;
+let currentUser = null, profile = null, authRequestVersion = 0;
+let orders = [], orderItems = []; // 과제 5 전까지 체험 주문은 임시 메모리에만 기록
+const savedCart = getStored(KEYS.cart, []);
+let cart = Array.isArray(savedCart) ? savedCart
+  .filter(row=>Number.isSafeInteger(Number(row?.id)) && Number(row.id)>0 && Number.isSafeInteger(Number(row.qty)) && Number(row.qty)>0)
+  .map(row=>({id:Number(row.id),qty:Number(row.qty)})) : [];
+let activeCategory="전체", searchTerm="", sortBy="id", detailId=null, detailQty=1;
+let slideIndex=0, slideTimer=null, toastTimer=null, searchTimer=null;
 const currentMember = () => currentUser ? profile : null;
 const tierFor = grade => MEMBERSHIP_TIERS.find(t=>t.grade===grade)||MEMBERSHIP_TIERS[0];
-const available = (storeId,id) => Math.max(0,Number(inventory[`${storeId}:${id}`]??0));
-const maxAvailable = id => Math.max(...STORES.map(s=>available(s.id,id)));
-const cartRows = () => cart.map(row=>({...row,product:PRODUCTS.find(p=>p.id===row.id)})).filter(row=>row.product&&row.product.purchasable);
-const subtotal = () => cartRows().reduce((sum,row)=>sum+row.product.price*row.qty,0);
+const stockOf = p => Math.max(0, Number(p?.stock)||0);
+const isMedicine = p => p?.category === "의약품";
+const canPurchase = p => Boolean(p && p.is_active && !isMedicine(p) && stockOf(p)>0);
+const cartRows = () => cart.map(row=>({...row,product:productById.get(row.id)||null}));
+const subtotal = () => cartRows().reduce((sum,row)=>sum+(row.product?Number(row.product.price)*row.qty:0),0);
 const shipping = (sum,method="delivery") => method==="pickup"||sum>=40000?0:3000;
 function toast(message){const el=$("#toast");el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.hidden=true,3300);}
+function productImageUrl(product){
+  const path=String(product?.image_url||"").trim();
+  // 이 과제에서는 img/ 안의 상대경로만 사용합니다. 값이 없거나 비정상적이면 기본 그림.
+  if(!path || /^(?:[a-z][a-z\d+.-]*:|\/)/i.test(path) || path.split("/").includes("..")) return DEFAULT_IMAGE;
+  return path.startsWith("./") ? path : `./${path}`;
+}
+// 경로가 있어도 이미지 파일이 삭제되었다면 기본 그림으로 교체합니다.
+document.addEventListener("error",event=>{
+  const target=event.target;
+  if(target?.tagName==="IMG" && target.closest(".product-picture,.detail-layout,.cart-item") && !target.src.endsWith("/img/product-placeholder.svg")) {
+    target.src=DEFAULT_IMAGE;
+  }
+},true);
 function renderHeader(){
   const loggedIn=Boolean(currentUser);
   const name=profile?.name || currentUser?.user_metadata?.name || currentUser?.email?.split("@")[0] || "회원";
@@ -622,42 +85,157 @@ function renderChips(){
   $("#categoryChips").innerHTML=CATEGORIES.map(c=>`<button class="chip ${c===activeCategory?'active':''}" type="button" data-cat="${c}" aria-pressed="${c===activeCategory}">${c==="의약품"?"의약품 정보":c}</button>`).join("");
   document.querySelectorAll(".nav-link[data-cat]").forEach(n=>{n.classList.toggle("current",n.dataset.cat===activeCategory);n.setAttribute("aria-current",n.dataset.cat===activeCategory?"page":"false");});
 }
-function renderProducts(){
+function escapeIlike(text){ return text.replace(/[\\%_]/g, match=>`\\${match}`); }
+function paintProducts(){
   renderChips();
-  let rows=PRODUCTS.filter(p=>(activeCategory==="전체"||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.tag}`).toLocaleLowerCase().includes(searchTerm.toLocaleLowerCase()));
-  if(sortBy==="low")rows.sort((a,b)=>(a.purchasable?0:1)-(b.purchasable?0:1)||a.price-b.price);
-  if(sortBy==="high")rows.sort((a,b)=>(a.purchasable?0:1)-(b.purchasable?0:1)||b.price-a.price);
-  if(sortBy==="name")rows.sort((a,b)=>a.name.localeCompare(b.name,"ko"));
-  $("#searchStatus").textContent=`${rows.length}개 상품${searchTerm?` · ‘${searchTerm}’ 검색 결과`:""}${activeCategory!=="전체"?` · ${activeCategory}`:""}`;
-  $("#emptyState").hidden=!!rows.length;
+  if(productLoading) return;
+  const rows=[...visibleProducts];
+  // DB는 항상 id 오름차순으로 조회; 사용자가 정렬 메뉴를 고르면 표시 순서만 바꿉니다.
+  if(sortBy==="low") rows.sort((a,b)=>Number(isMedicine(a))-Number(isMedicine(b))||a.price-b.price||a.id-b.id);
+  if(sortBy==="high") rows.sort((a,b)=>Number(isMedicine(a))-Number(isMedicine(b))||b.price-a.price||a.id-b.id);
+  if(sortBy==="name") rows.sort((a,b)=>a.name.localeCompare(b.name,"ko")||a.id-b.id);
+  $("#productHeadlineCount").textContent=String(rows.length);
+  $("#emptyState").hidden=!!rows.length || productLoadError;
+  $("#emptyState strong").textContent="상품이 없습니다";
+  $("#searchStatus").textContent=productLoadError ? "상품 정보를 불러오지 못했습니다. 새로고침해 주세요." :
+    `${rows.length}개 상품${searchTerm?` · ‘${searchTerm}’ 검색 결과`:""}${activeCategory!=="전체"?` · ${activeCategory}`:""}`;
   $("#productGrid").innerHTML=rows.map(p=>{
-    const stock=p.purchasable?available("wh",p.id):0;
-    return `<article class="product-card"><button type="button" class="product-picture" data-detail="${p.id}" aria-label="${safe(p.name)} 상세 보기"><img src="./${p.image}" alt="${safe(p.name)} 상품 일러스트" loading="lazy"><span class="product-badge ${p.purchasable?'':'info'}">${p.purchasable?safe(p.tag):'매장 상담'}</span></button><div class="product-info"><span class="product-cat">${safe(p.category)}</span><button type="button" class="product-name" data-detail="${p.id}">${safe(p.name)}</button>${p.purchasable?`<div class="product-price">${money(p.price)}</div><div class="product-bottom"><small class="stock-note">${stock?`배송재고 ${stock}개`:'온라인 재고 없음'}</small><button class="mini-cart" type="button" data-add="${p.id}" aria-label="${safe(p.name)} 담기" ${maxAvailable(p.id)===0?'disabled':''}>＋</button></div>`:`<p class="medicine-hint">의약품 정보·매장 상담 전용</p><button type="button" class="btn btn-outline" data-detail="${p.id}">안내 보기</button>`}</div></article>`;
+    const soldOut=stockOf(p)===0;
+    const medicine=isMedicine(p);
+    const badge=soldOut?"품절":medicine?"매장 상담":"HOWELL";
+    const purchase=canPurchase(p);
+    return `<article class="product-card"><button type="button" class="product-picture" data-detail="${p.id}" aria-label="${safe(p.name)} 상세 보기"><img src="${safe(productImageUrl(p))}" alt="${safe(p.name)} 상품 이미지" loading="lazy"><span class="product-badge ${soldOut||medicine?'info':''}">${badge}</span></button><div class="product-info"><span class="product-cat">${safe(p.category)}</span><button type="button" class="product-name" data-detail="${p.id}">${safe(p.name)}</button>${medicine?`<p class="medicine-hint">${soldOut?'품절 · ':''}의약품 정보·매장 상담 전용</p><button type="button" class="btn btn-outline" data-detail="${p.id}">안내 보기</button>`:`<div class="product-price">${money(p.price)}</div><div class="product-bottom"><small class="stock-note">${soldOut?'품절':`배송재고 ${stockOf(p)}개`}</small><button class="mini-cart" type="button" data-add="${p.id}" aria-label="${safe(p.name)} 담기" ${purchase?'':'disabled'}>${purchase?'＋':'품절'}</button></div>`}</div></article>`;
   }).join("");
 }
-function applyCategory(cat){activeCategory=CATEGORIES.includes(cat)?cat:"전체";searchTerm="";$("#searchInput").value="";renderProducts();$("#products").scrollIntoView({behavior:"smooth",block:"start"});}
-function addToCart(id,qty=1){const p=PRODUCTS.find(x=>x.id===Number(id));if(!p||!p.purchasable){toast("의약품은 온라인 주문 대상이 아닙니다.");return;}
-  const existing=cart.find(x=>x.id===p.id),next=(existing?.qty||0)+qty;
-  if(next>maxAvailable(p.id)){toast("선택한 수량만큼 재고가 없습니다.");return;}
-  if(existing)existing.qty=next;else cart.push({id:p.id,qty:next});save(KEYS.cart,cart);renderHeader();renderCart();toast(`${p.name}을(를) 장바구니에 담았습니다.`);
+async function loadProducts(){
+  const request=++listRequestVersion;
+  productLoadError=false;
+  productLoading=true;
+  renderChips();
+  $("#searchStatus").textContent="불러오는 중";
+  $("#productGrid").innerHTML="";
+  $("#emptyState").hidden=true;
+  try {
+    let query=db.from("shop_products").select(PRODUCT_COLUMNS).eq("is_active",true);
+    if(activeCategory!=="전체") query=query.eq("category",activeCategory);
+    if(searchTerm) query=query.ilike("name",`%${escapeIlike(searchTerm)}%`);
+    const {data,error}=await query.order("id",{ascending:true});
+    if(error) throw error;
+    if(request!==listRequestVersion) return;
+    productLoading=false;
+    visibleProducts=data||[];
+    for(const p of visibleProducts) productById.set(Number(p.id),p);
+    paintProducts();
+    renderCart();
+    // 저장된 장바구니 상품이 현재 필터 결과에 없을 때도 DB에서 개별 조회합니다.
+    void hydrateCartProducts();
+  } catch(error){
+    if(request!==listRequestVersion) return;
+    console.error("shop_products 상품 목록 조회 실패:",error);
+    productLoadError=true;
+    productLoading=false;
+    visibleProducts=[];
+    paintProducts();
+    toast("상품 목록을 불러오지 못했습니다. Supabase 조회 권한을 확인해 주세요.");
+  }
 }
-function changeCart(id,delta){const r=cart.find(x=>x.id===id);if(!r)return;const next=r.qty+delta;if(next<1){removeCart(id);return;}if(next>maxAvailable(id)){toast("현재 재고 수량을 초과할 수 없습니다.");return;}r.qty=next;save(KEYS.cart,cart);renderHeader();renderCart();}
+async function hydrateCartProducts(){
+  const missing=[...new Set(cart.map(row=>row.id).filter(id=>!productById.has(id)))];
+  if(!missing.length) return;
+  try {
+    const {data,error}=await db.from("shop_products").select(PRODUCT_COLUMNS)
+      .eq("is_active",true).in("id",missing);
+    if(error) throw error;
+    for(const p of data||[]) productById.set(Number(p.id),p);
+    renderCart();
+  } catch(error){console.error("장바구니 상품 DB 조회 실패:",error);}
+}
+function applyCategory(cat){
+  clearTimeout(searchTimer);
+  activeCategory=CATEGORIES.includes(cat)?cat:"전체";
+  searchTerm="";
+  $("#searchInput").value="";
+  void loadProducts();
+  $("#products").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function addToCart(id,qty=1){
+  const p=productById.get(Number(id));
+  if(!p){toast("상품 정보를 아직 불러오지 못했습니다.");return;}
+  if(isMedicine(p)){toast("의약품은 온라인 주문 대상이 아닙니다.");return;}
+  if(!canPurchase(p)){toast("품절된 상품은 장바구니에 담을 수 없습니다.");return;}
+  const existing=cart.find(x=>x.id===Number(p.id));
+  const next=(existing?.qty||0)+qty;
+  if(next>stockOf(p)){toast("선택한 수량만큼 재고가 없습니다.");return;}
+  if(existing) existing.qty=next;
+  else cart.push({id:Number(p.id),qty:next});
+  save(KEYS.cart,cart);
+  renderHeader();renderCart();
+  toast(`${p.name}을(를) 장바구니에 담았습니다.`);
+}
+function changeCart(id,delta){
+  const r=cart.find(x=>x.id===id);if(!r)return;
+  const next=r.qty+delta;
+  if(next<1){removeCart(id);return;}
+  const p=productById.get(id);
+  if(delta>0 && (!canPurchase(p)||next>stockOf(p))){toast("현재 상품 재고 수량을 초과할 수 없습니다.");return;}
+  r.qty=next;
+  save(KEYS.cart,cart);renderHeader();renderCart();
+}
 function removeCart(id){cart=cart.filter(x=>x.id!==id);save(KEYS.cart,cart);renderHeader();renderCart();}
-function renderCart(){const rows=cartRows(),sub=subtotal();
-  $("#cartItems").innerHTML=rows.length?rows.map(r=>`<article class="cart-item"><img src="./${r.product.image}" alt="${safe(r.product.name)}"><div><h4>${safe(r.product.name)}</h4><p>${money(r.product.price*r.qty)}</p><div class="cart-item-bottom"><div class="qty-controls"><button type="button" data-qty="${r.id}" data-delta="-1" aria-label="수량 감소">−</button><span>${r.qty}</span><button type="button" data-qty="${r.id}" data-delta="1" aria-label="수량 증가">＋</button></div><button class="text-btn" type="button" data-remove="${r.id}">삭제</button></div></div></article>`).join(""):`<div class="cart-empty"><h3>장바구니가 비어 있어요</h3><p>필요한 상품을 골라 담아보세요.</p><button class="btn btn-outline" type="button" data-close>상품 둘러보기</button></div>`;
-  $("#cartSubtotal").textContent=money(sub);$("#cartShipping").textContent=money(rows.length?shipping(sub):0);$("#cartTotal").textContent=money(rows.length?sub+shipping(sub):0);$("#cartCheckout").disabled=!rows.length;
+function canCheckoutCart(){
+  const rows=cartRows();
+  return rows.length>0 && rows.every(r=>canPurchase(r.product) && r.qty<=stockOf(r.product));
 }
-function openCart(){closeModal();renderCart();$("#cartShade").hidden=false;$("#cartPanel").hidden=false;document.body.style.overflow="hidden";}
+function renderCart(){
+  const rows=cartRows(),sub=subtotal();
+  $("#cartItems").innerHTML=rows.length?rows.map(r=>{
+    const p=r.product;
+    if(!p) return `<article class="cart-item"><div><h4>상품 정보 확인 중 · #${r.id}</h4><p>삭제되었거나 비공개 상품일 수 있습니다.</p><button class="text-btn" type="button" data-remove="${r.id}">삭제</button></div></article>`;
+    const available=canPurchase(p) && r.qty<=stockOf(p);
+    return `<article class="cart-item"><img src="${safe(productImageUrl(p))}" alt="${safe(p.name)}"><div><h4>${safe(p.name)}</h4><p>${money(Number(p.price)*r.qty)}</p>${available?'':`<small class="stock-note">${stockOf(p)===0?'품절':'구매 가능 수량 초과 또는 주문 불가'}</small>`}<div class="cart-item-bottom"><div class="qty-controls"><button type="button" data-qty="${r.id}" data-delta="-1" aria-label="수량 감소">−</button><span>${r.qty}</span><button type="button" data-qty="${r.id}" data-delta="1" aria-label="수량 증가" ${!canPurchase(p)||r.qty>=stockOf(p)?'disabled':''}>＋</button></div><button class="text-btn" type="button" data-remove="${r.id}">삭제</button></div></div></article>`;
+  }).join(""):`<div class="cart-empty"><h3>장바구니가 비어 있어요</h3><p>필요한 상품을 골라 담아보세요.</p><button class="btn btn-outline" type="button" data-close>상품 둘러보기</button></div>`;
+  $("#cartSubtotal").textContent=money(sub);
+  $("#cartShipping").textContent=money(rows.length?shipping(sub):0);
+  $("#cartTotal").textContent=money(rows.length?sub+shipping(sub):0);
+  $("#cartCheckout").disabled=!canCheckoutCart();
+}
+function openCart(){closeModal();renderCart();$("#cartShade").hidden=false;$("#cartPanel").hidden=false;document.body.style.overflow="hidden";void hydrateCartProducts();}
 function closeCart(){$("#cartShade").hidden=true;$("#cartPanel").hidden=true;document.body.style.overflow="";}
 function closeModal(){$("#modalBackdrop").hidden=true;document.querySelectorAll("#modalBackdrop .dialog").forEach(d=>d.hidden=true);document.body.style.overflow="";}
 function showModal(name){closeCart();$("#modalBackdrop").hidden=false;document.querySelectorAll("#modalBackdrop .dialog").forEach(d=>d.hidden=true);$("#"+name+"Modal").hidden=false;document.body.style.overflow="hidden";}
 function setAuthMode(mode){const signup=mode==="signup";$("#loginForm").hidden=signup;$("#signupForm").hidden=!signup;$("#loginTab").classList.toggle("active",!signup);$("#signupTab").classList.toggle("active",signup);$("#authHeading").textContent=signup?"하우웰 회원가입":"하우웰 로그인";}
 function openAuth(mode="login"){setAuthMode(mode);showModal("auth");}
-function renderDetail(){const p=PRODUCTS.find(x=>x.id===detailId);if(!p)return;
-  const amount=p.purchasable?`<div class="detail-price">${money(p.price)}</div><div class="qty-controls"><button type="button" data-action="detail-minus" aria-label="수량 감소">−</button><span id="detailQty">${detailQty}</span><button type="button" data-action="detail-plus" aria-label="수량 증가">＋</button></div><p>매장별 보유 재고는 체험 주문 단계에서 확인할 수 있습니다.</p><div class="detail-actions"><button class="btn btn-primary full" type="button" data-action="detail-add">장바구니에 담기</button></div>`:`<div class="detail-warning">의약품은 온라인 판매·결제 대상이 아닙니다. 제품 선택 및 복용은 약사 등 전문가와 상의해 주세요. 이 화면은 정보 제공용 예시입니다.</div>`;
-  $("#detailContent").innerHTML=`<div class="detail-layout"><img src="./${p.image}" alt="${safe(p.name)} 상품 일러스트"><div class="detail-info"><span class="product-cat">HOWELL · ${safe(p.category)}</span><h2>${safe(p.name)}</h2><p>${safe(p.description)}</p>${amount}</div></div>`;
+function renderDetail(p){
+  if(!p)return;
+  const soldOut=stockOf(p)===0;
+  const amount=isMedicine(p)?`<div class="detail-warning">${soldOut?'품절 · ':''}의약품은 온라인 판매·결제 대상이 아닙니다. 제품 선택 및 복용은 약사 등 전문가와 상의해 주세요. 이 화면은 정보 제공용 예시입니다.</div>`:
+    `<div class="detail-price">${money(p.price)}</div><p class="stock-note">${soldOut?'품절':`재고 ${stockOf(p)}개`}</p>${soldOut?'<div class="detail-warning">품절된 상품은 장바구니에 담을 수 없습니다.</div>':`<div class="qty-controls"><button type="button" data-action="detail-minus" aria-label="수량 감소">−</button><span id="detailQty">${detailQty}</span><button type="button" data-action="detail-plus" aria-label="수량 증가">＋</button></div><div class="detail-actions"><button class="btn btn-primary full" type="button" data-action="detail-add">장바구니에 담기</button></div>`}`;
+  $("#detailContent").innerHTML=`<div class="detail-layout"><img src="${safe(productImageUrl(p))}" alt="${safe(p.name)} 상품 이미지"><div class="detail-info"><span class="product-cat">HOWELL · ${safe(p.category)}</span><h2>${safe(p.name)}</h2><p>상품 정보는 Supabase 데이터베이스에서 불러왔습니다.</p>${amount}</div></div>`;
 }
-function openDetail(id){detailId=Number(id);detailQty=1;renderDetail();showModal("detail");}
+async function openDetail(id){
+  const number=Number(id);
+  if(!Number.isSafeInteger(number)||number<1) return;
+  const request=++detailRequestVersion;
+  detailId=number;detailQty=1;
+  showModal("detail");
+  $("#detailContent").textContent="불러오는 중";
+  try {
+    const {data,error}=await db.from("shop_products").select(PRODUCT_COLUMNS)
+      .eq("is_active",true).eq("id",number).single();
+    if(request!==detailRequestVersion) return;
+    if(error){
+      if(error.code==="PGRST116"){$("#detailContent").textContent="상품이 없습니다";return;}
+      throw error;
+    }
+    productById.set(Number(data.id),data);
+    renderDetail(data);
+  } catch(error){
+    if(request!==detailRequestVersion) return;
+    console.error("shop_products 상품 상세 조회 실패:",error);
+    $("#detailContent").textContent="상품 상세 정보를 불러오지 못했습니다.";
+  }
+}
+
 // 서버는 signup 메타데이터를 활용하여 shop_profiles를 자동 생성합니다.
 // 클라이언트에서는 points / grade / role을 읽기만 하며 수정 요청에 넣지 않습니다.
 function authErrorMessage(error, action="login") {
@@ -866,68 +444,110 @@ async function handleProfileUpdate(ev) {
   } finally {button.disabled=false;}
 }
 
-function renderCheckout(){const m=currentMember();if(!m)return;const form=$("#checkoutForm");form.reset();form.elements.receiver.value=m.name;$("#pickupStore").innerHTML=STORES.filter(s=>s.pickup).map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join('');updateCheckout();}
-function updateCheckout(){const form=$("#checkoutForm"),m=currentMember();if(!m)return;const method=form.elements.receiveMethod.value,sub=subtotal(),fee=shipping(sub,method),storeId=method==='pickup'?form.elements.pickupStore.value:'wh';
- $("#deliveryFields").hidden=method!=="delivery";$("#pickupFields").hidden=method!=="pickup";const bad=cartRows().filter(r=>available(storeId,r.id)<r.qty);
- $("#pickupInventory").textContent=method==='pickup'?(bad.length?`재고 부족: ${bad.map(x=>x.product.name).join(', ')}. 다른 매장을 선택해 주세요.`:`선택 매장의 모든 상품이 준비 가능합니다. (체험용 재고)`):'';
- const pInput=$("#usePoints"),used=0; // 회원 포인트는 이번 단계에서 조회만 함
- pInput.value="0";
- $("#checkoutSummary").innerHTML=`<div class="price-row"><span>상품금액</span><strong>${money(sub)}</strong></div><div class="price-row"><span>${method==='pickup'?'매장 픽업':'배송비'}</span><strong>${money(fee)}</strong></div><div class="price-row"><span>보유 포인트</span><strong>${m.points.toLocaleString()}P</strong></div>`;
- $("#checkoutTotal").innerHTML=`<div class="price-row"><span>포인트 사용</span><strong>−${used.toLocaleString()}P</strong></div><div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub+fee-used)}</strong></div><p class="form-help" style="margin:0">현재 ${tierFor(m.grade).name} 등급 · 예상 적립 ${Math.floor((sub-used)*tierFor(m.grade).rate).toLocaleString()}P</p>`;
+
+// 과제 4에서는 주문/실재고/포인트를 서버에 기록하지 않습니다. 주문 기능은 과제 5에서 연결합니다.
+function renderCheckout(){
+  const m=currentMember();if(!m)return;
+  const form=$("#checkoutForm");form.reset();form.elements.receiver.value=m.name;
+  $("#pickupStore").innerHTML=STORES.filter(s=>s.pickup).map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join("");
+  updateCheckout();
 }
-function openCheckout(){if(!cartRows().length){toast("장바구니가 비어 있습니다.");return;}if(!currentMember()){closeCart();toast("체험 주문을 위해 로그인해 주세요.");openAuth();return;}showModal("checkout");renderCheckout();}
-function handleCheckout(ev){ev.preventDefault();const m=currentMember();if(!m){openAuth();return;}const form=ev.currentTarget,method=form.elements.receiveMethod.value,storeId=method==='pickup'?form.elements.pickupStore.value:'wh',rows=cartRows();if(!rows.length){toast("장바구니가 비어 있습니다.");return;}
- if(method==='delivery'&&(!form.elements.receiver.value.trim()||!form.elements.address.value.trim())){toast("체험용 수령인과 주소를 입력해 주세요. 실제 주소는 입력하지 마세요.");return;}
- if(rows.some(r=>available(storeId,r.id)<r.qty)){toast("해당 처리 거점의 재고가 부족합니다. 상품 수량이나 매장을 변경해 주세요.");updateCheckout();return;}
- const sub=subtotal(),fee=shipping(sub,method),used=0,tier=tierFor(m.grade),earned=Math.floor(sub*tier.rate);
- const order={id:`HW-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*1000)}`,memberId:m.id,receiveMethod:method,storeId,status:'체험 주문 완료',subtotal:sub,shippingFee:fee,pointsUsed:used,total:sub+fee-used,earned,createdAt:new Date().toISOString()};
- orders.push(order);for(const r of rows){orderItems.push({orderId:order.id,productId:r.id,name:r.product.name,price:r.product.price,qty:r.qty});inventory[`${storeId}:${r.id}`]=available(storeId,r.id)-r.qty;}
- // 이번 단계의 주문은 서버 결제/DB 주문이 아닌 임시 메모리 기록입니다.
- // DB 포인트/등급은 주문이벤트에서 임의로 변경하지 않습니다.
- save(KEYS.inventory,inventory);cart=[];save(KEYS.cart,cart);
- renderHeader();renderCart();renderProducts();openMyPage();
- toast(`체험 주문 ${order.id} 작성 완료 · DB 주문/포인트 미반영`);
+function updateCheckout(){
+  const form=$("#checkoutForm"),m=currentMember();if(!m)return;
+  const method=form.elements.receiveMethod.value,sub=subtotal(),fee=shipping(sub,method);
+  $("#deliveryFields").hidden=method!=="delivery";
+  $("#pickupFields").hidden=method!=="pickup";
+  const bad=cartRows().filter(r=>!canPurchase(r.product)||r.qty>stockOf(r.product));
+  $("#pickupInventory").textContent=method==="pickup" ?
+    (bad.length?"품절 또는 재고 부족 상품이 있습니다. 장바구니를 확인해 주세요.":"매장별 실재고는 아직 연결되지 않았습니다. 화면에는 DB의 상품 재고만 표시합니다."):"";
+  $("#usePoints").value="0";
+  $("#checkoutSummary").innerHTML=`<div class="price-row"><span>상품금액</span><strong>${money(sub)}</strong></div><div class="price-row"><span>${method==='pickup'?'매장 픽업':'배송비'}</span><strong>${money(fee)}</strong></div><div class="price-row"><span>보유 포인트</span><strong>${Number(m.points||0).toLocaleString()}P</strong></div>`;
+  $("#checkoutTotal").innerHTML=`<div class="price-row"><span>포인트 사용</span><strong>−0P</strong></div><div class="price-row"><span>최종 체험 주문금액</span><strong>${money(sub+fee)}</strong></div><p class="form-help" style="margin:0">현재 ${tierFor(m.grade).name} 등급 · 예상 적립 ${Math.floor(sub*tierFor(m.grade).rate).toLocaleString()}P</p>`;
 }
+function openCheckout(){
+  if(!cart.length){toast("장바구니가 비어 있습니다.");return;}
+  if(!canCheckoutCart()){toast("품절이거나 재고가 부족한 상품을 장바구니에서 정리해 주세요.");return;}
+  if(!currentMember()){closeCart();toast("체험 주문을 위해 로그인해 주세요.");openAuth();return;}
+  showModal("checkout");renderCheckout();
+}
+function handleCheckout(ev){
+  ev.preventDefault();
+  const m=currentMember();if(!m){openAuth();return;}
+  const form=ev.currentTarget,method=form.elements.receiveMethod.value;
+  if(!canCheckoutCart()){toast("품절이거나 재고가 부족한 상품이 있습니다.");return;}
+  if(method==="delivery"&&(!form.elements.receiver.value.trim()||!form.elements.address.value.trim())){
+    toast("체험용 수령인과 주소를 입력해 주세요. 실제 주소는 입력하지 마세요.");return;
+  }
+  const rows=cartRows(),sub=subtotal(),fee=shipping(sub,method),tier=tierFor(m.grade);
+  const order={id:`HW-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random()*1000)}`,memberId:m.id,receiveMethod:method,storeId:method==="pickup"?form.elements.pickupStore.value:"wh",status:"체험 주문 완료",subtotal:sub,shippingFee:fee,pointsUsed:0,total:sub+fee,earned:Math.floor(sub*tier.rate),createdAt:new Date().toISOString()};
+  orders.push(order);
+  for(const r of rows) orderItems.push({orderId:order.id,productId:r.id,name:r.product.name,price:r.product.price,qty:r.qty});
+  // 주문은 화면 내 임시 기록이며 DB 상품 stock은 절대로 차감하지 않습니다.
+  cart=[];save(KEYS.cart,cart);
+  renderHeader();renderCart();paintProducts();void openMyPage();
+  toast(`체험 주문 ${order.id} 작성 완료 · DB 재고/포인트 미변경`);
+}
+
 function setSlide(index){const slides=[...document.querySelectorAll('.hero-slide')];slideIndex=(index+slides.length)%slides.length;slides.forEach((s,i)=>{s.classList.toggle('active',i===slideIndex);s.setAttribute('aria-hidden',String(i!==slideIndex));s.querySelectorAll('button').forEach(b=>b.tabIndex=i===slideIndex?0:-1);});document.querySelectorAll('#heroDots button').forEach((b,i)=>{b.classList.toggle('active',i===slideIndex);b.setAttribute('aria-pressed',String(i===slideIndex));});}
 function restartSlides(){clearInterval(slideTimer);slideTimer=setInterval(()=>setSlide(slideIndex+1),6000);}
 function initSlides(){const dots=$('#heroDots');dots.innerHTML=[0,1,2,3].map(i=>`<button type="button" data-slide="${i}" aria-label="${i+1}번 배너" aria-pressed="false"></button>`).join('');setSlide(0);restartSlides();}
 
-/* 이벤트 — 정적 페이지에서만 동작. 데이터는 추후 API 호출로 교체하세요. */
-document.addEventListener('click',event=>{
- const e=event.target.closest('button,a');if(!e)return;
- if(e.hasAttribute('data-close')){closeModal();closeCart();return;}
- if(e.dataset.cat){applyCategory(e.dataset.cat);return;}
- if(e.dataset.open){const where=e.dataset.open;if(where==='auth')openAuth(e.dataset.mode||'login');if(where==='cart')openCart();if(where==='mypage')openMyPage();return;}
- if(e.dataset.mode){setAuthMode(e.dataset.mode);return;}
- if(e.dataset.add){addToCart(Number(e.dataset.add));return;}
- if(e.dataset.detail){openDetail(Number(e.dataset.detail));return;}
- if(e.dataset.qty){changeCart(Number(e.dataset.qty),Number(e.dataset.delta));return;}
- if(e.dataset.remove){removeCart(Number(e.dataset.remove));return;}
- if(e.dataset.slide){setSlide(Number(e.dataset.slide));restartSlides();return;}
- if(e.dataset.action==='detail-plus'){detailQty=Math.min(detailQty+1,99);$('#detailQty').textContent=detailQty;return;}
- if(e.dataset.action==='detail-minus'){detailQty=Math.max(1,detailQty-1);$('#detailQty').textContent=detailQty;return;}
- if(e.dataset.action==='detail-add'){addToCart(detailId,detailQty);closeModal();openCart();return;}
- if(e.dataset.action==='logout'){void handleLogout();return;}
+
+/* 단일 HTML 페이지의 공통 이벤트. 모든 상품 조회는 Supabase를 거칩니다. */
+document.addEventListener("click",event=>{
+  const e=event.target.closest("button,a");if(!e)return;
+  if(e.hasAttribute("data-close")){closeModal();closeCart();return;}
+  if(e.dataset.cat){applyCategory(e.dataset.cat);return;}
+  if(e.dataset.open){const where=e.dataset.open;if(where==="auth")openAuth(e.dataset.mode||"login");if(where==="cart")openCart();if(where==="mypage")void openMyPage();return;}
+  if(e.dataset.mode){setAuthMode(e.dataset.mode);return;}
+  if(e.dataset.add){addToCart(Number(e.dataset.add));return;}
+  if(e.dataset.detail){void openDetail(Number(e.dataset.detail));return;}
+  if(e.dataset.qty){changeCart(Number(e.dataset.qty),Number(e.dataset.delta));return;}
+  if(e.dataset.remove){removeCart(Number(e.dataset.remove));return;}
+  if(e.dataset.slide){setSlide(Number(e.dataset.slide));restartSlides();return;}
+  if(e.dataset.action==="detail-plus"){
+    const product=productById.get(detailId);
+    detailQty=Math.min(detailQty+1,stockOf(product));
+    const quantity=$("#detailQty");if(quantity)quantity.textContent=detailQty;
+    return;
+  }
+  if(e.dataset.action==="detail-minus"){
+    detailQty=Math.max(1,detailQty-1);
+    const quantity=$("#detailQty");if(quantity)quantity.textContent=detailQty;
+    return;
+  }
+  if(e.dataset.action==="detail-add"){
+    addToCart(detailId,detailQty);closeModal();openCart();return;
+  }
+  if(e.dataset.action==="logout"){void handleLogout();return;}
 });
-$('#searchForm').addEventListener('submit',e=>{e.preventDefault();searchTerm=$('#searchInput').value.trim();activeCategory='전체';renderProducts();$('#products').scrollIntoView({behavior:'smooth'});});
-$('#searchInput').addEventListener('input',e=>{searchTerm=e.target.value.trim();if(!searchTerm&&activeCategory==='전체')renderProducts();});
-$('#sortSelect').addEventListener('change',e=>{sortBy=e.target.value;renderProducts();});
-$('#resetFilter').addEventListener('click',()=>applyCategory('전체'));
-$('#heroPrev').addEventListener('click',()=>{setSlide(slideIndex-1);restartSlides();});
-$('#heroNext').addEventListener('click',()=>{setSlide(slideIndex+1);restartSlides();});
-$('#modalBackdrop').addEventListener('click',e=>{if(e.target===$('#modalBackdrop'))closeModal();});
-$('#cartShade').addEventListener('click',closeCart);
-$('#cartCheckout').addEventListener('click',openCheckout);
-$('#loginForm').addEventListener('submit',handleLogin);
-$('#signupForm').addEventListener('submit',handleSignup);
-document.addEventListener('submit',e=>{if(e.target.id==='profileEditForm')void handleProfileUpdate(e);});
-$('#checkoutForm').addEventListener('submit',handleCheckout);
-$('#checkoutForm').addEventListener('input',updateCheckout);
-$('#checkoutForm').addEventListener('change',updateCheckout);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCart();}});
-renderHeader();renderTiers();renderProducts();renderCart();initSlides();
-// 모든 페이지 방문/새로고침마다 인증 세션을 확인합니다.
+$("#searchForm").addEventListener("submit",e=>{
+  e.preventDefault();clearTimeout(searchTimer);
+  searchTerm=$("#searchInput").value.trim();activeCategory="전체";
+  void loadProducts();$("#products").scrollIntoView({behavior:"smooth"});
+});
+$("#searchInput").addEventListener("input",e=>{
+  clearTimeout(searchTimer);
+  searchTerm=e.target.value.trim();
+  searchTimer=setTimeout(()=>{void loadProducts();},300);
+});
+$("#sortSelect").addEventListener("change",e=>{sortBy=e.target.value;paintProducts();});
+$("#resetFilter").addEventListener("click",()=>applyCategory("전체"));
+$("#heroPrev").addEventListener("click",()=>{setSlide(slideIndex-1);restartSlides();});
+$("#heroNext").addEventListener("click",()=>{setSlide(slideIndex+1);restartSlides();});
+$("#modalBackdrop").addEventListener("click",e=>{if(e.target===$("#modalBackdrop"))closeModal();});
+$("#cartShade").addEventListener("click",closeCart);
+$("#cartCheckout").addEventListener("click",openCheckout);
+$("#loginForm").addEventListener("submit",handleLogin);
+$("#signupForm").addEventListener("submit",handleSignup);
+document.addEventListener("submit",e=>{if(e.target.id==="profileEditForm")void handleProfileUpdate(e);});
+$("#checkoutForm").addEventListener("submit",handleCheckout);
+$("#checkoutForm").addEventListener("input",updateCheckout);
+$("#checkoutForm").addEventListener("change",updateCheckout);
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal();closeCart();}});
+renderHeader();renderTiers();renderChips();renderCart();initSlides();
+// 첫 화면에서 shop_products를 서버에서 읽어 옵니다.
+void loadProducts();
+// 이전 과제에서 구현한 Auth / 마이페이지 연동 유지.
 void syncAuthState();
-// 다른 탭에서의 로그인/로그아웃도 반영합니다.
-// 콜백 안에서 Supabase API를 직접 await하지 않아 인증 잠금을 피합니다.
 db.auth.onAuthStateChange(()=>{setTimeout(()=>{void syncAuthState();},0);});

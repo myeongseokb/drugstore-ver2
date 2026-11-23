@@ -72,11 +72,11 @@
     <section class="trust-band" aria-label="하우웰 서비스"><div class="container trust-grid"><div><span>✓</span><strong>큐레이션 제품</strong><small>일상에 필요한 상품만</small></div><div><span>♧</span><strong>회원 포인트</strong><small>등급별 최대 7% 적립</small></div><div><span>⬡</span><strong>편리한 체험 주문</strong><small>실제 결제 없는 시뮬레이션</small></div><div><span>✧</span><strong>신규 회원 3,000P</strong><small>회원가입 즉시 지급</small></div></div></section>
 
     <section class="products-section container" id="products">
-      <div class="section-heading"><div><span class="section-kicker">HOWELL CURATION</span><h2>하우웰 추천 상품 <span class="heading-accent">50</span></h2></div><p>원하는 카테고리와 검색어로 찾아보세요.</p></div>
+      <div class="section-heading"><div><span class="section-kicker">HOWELL CURATION</span><h2>하우웰 추천 상품 <span class="heading-accent" id="productHeadlineCount">0</span></h2></div><p>원하는 카테고리와 검색어로 찾아보세요.</p></div>
       <div class="listing-toolbar"><div id="categoryChips" class="chips" aria-label="분류 필터"></div><div class="sort-wrap"><label class="sr-only" for="sortSelect">정렬</label><select id="sortSelect"><option value="id">추천순</option><option value="low">낮은 가격순</option><option value="high">높은 가격순</option><option value="name">이름순</option></select></div></div>
       <div class="search-status" id="searchStatus" aria-live="polite"></div>
       <div id="productGrid" class="product-grid"></div>
-      <div id="emptyState" class="empty-state" hidden><strong>검색 결과가 없습니다.</strong><p>검색어나 카테고리를 바꿔보세요.</p><button type="button" class="btn btn-outline" id="resetFilter">전체 상품 보기</button></div>
+      <div id="emptyState" class="empty-state" hidden><strong>상품이 없습니다</strong><p>검색어나 카테고리를 바꿔보세요.</p><button type="button" class="btn btn-outline" id="resetFilter">전체 상품 보기</button></div>
     </section>
 
     <section id="membership" class="membership-section"><div class="container membership-layout"><div class="member-head"><span class="section-kicker">HOWELL REWARDS</span><h2>함께할수록<br>더 커지는 혜택</h2><p>가입하면 3,000P를 드리고,<br>누적 구매금액에 따라 포인트가 더 많이 쌓여요.</p><button type="button" class="btn btn-dark" data-open="auth" data-mode="signup">하우웰 회원 되기 ↗</button></div><div id="tierCards" class="tier-grid"></div></div></section>
@@ -84,7 +84,7 @@
     <section class="notice-section container"><div class="notice-card"><div><span class="section-kicker">PLEASE NOTE</span><h2>건강한 선택을 위한 안내</h2><p>의약품 카테고리는 정보 확인용입니다. 의약품은 온라인 장바구니 및 주문이 제한되며, 실제 구매·복용 상담은 적법한 약국을 이용해 주세요. 모든 상품과 재고·가격은 시연을 위한 예시입니다.</p></div><span class="notice-decoration" aria-hidden="true">✚</span></div></section>
   </main>
 
-  <footer class="site-footer"><div class="container footer-content"><div><a href="./index.html" class="footer-brand">HOWELL<span>.</span></a><p>Better days, better you.<br>당신의 건강한 일상을 생각합니다.</p></div><div class="footer-info"><strong>하우웰 온라인 체험몰</strong><p>회원 인증·프로필은 Supabase에서 관리하고, 주문·재고는 체험용입니다.<br>실제 결제, 배송, 의약품 판매, 고객센터는 운영하지 않습니다.<br>© 2026 HOWELL. Demo website.</p></div></div></footer>
+  <footer class="site-footer"><div class="container footer-content"><div><a href="./index.html" class="footer-brand">HOWELL<span>.</span></a><p>Better days, better you.<br>당신의 건강한 일상을 생각합니다.</p></div><div class="footer-info"><strong>하우웰 온라인 체험몰</strong><p>회원·상품 정보는 Supabase에서 읽고, 주문은 체험용입니다.<br>실제 결제, 배송, 의약품 판매, 고객센터는 운영하지 않습니다.<br>© 2026 HOWELL. Demo website.</p></div></div></footer>
 
   <div id="modalBackdrop" class="overlay" hidden>
     <div id="authModal" class="dialog auth-dialog" role="dialog" aria-modal="true" aria-label="로그인 또는 회원가입" hidden>
